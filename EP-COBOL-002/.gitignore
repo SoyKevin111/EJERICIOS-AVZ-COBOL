@@ -1,0 +1,38 @@
+# ─────────────────────────────────────────────────────────────
+#  EP-COBOL-002 — ignorar TODO lo que se genera al compilar/correr
+#  Se versionan los fuentes: cbl/*.sqb, cpy/*.cpy, jcl/*.sh,
+#  *.sql, docs/, notes, NOTES*.cbl
+# ─────────────────────────────────────────────────────────────
+
+# COBOL expandido que gixpp genera desde los .sqb
+/tcbl/*
+!/tcbl/.gitkeep
+
+# Ejecutables y módulos que produce cobc
+/bin/*
+!/bin/.gitkeep
+*.so
+*.o
+*.obj
+*.exe
+*.dll
+*.lst
+*.int
+*.gnt
+
+# Logs / temporales de GixSQL
+gixsql.log
+*.gixsql.log
+
+# Salidas en tiempo de ejecución del programa
+*.dat
+*.DAT
+COBROS_GENERADOS.*
+MOVIMIENTOS_CONSOLIDADOS.*
+REPORTE.TXT
+
+# SO / editor
+.DS_Store
+*.swp
+notes
+NOTES2.cbl
