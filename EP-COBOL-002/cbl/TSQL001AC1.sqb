@@ -1,0 +1,83 @@
+
+       IDENTIFICATION DIVISION.
+
+       PROGRAM-ID. CARGAR-CONCEPTOS.
+
+       ENVIRONMENT DIVISION.
+
+       CONFIGURATION SECTION.
+
+      * SOURCE-COMPUTER. IBM WITH DEBUGGING MODE.
+
+       INPUT-OUTPUT SECTION.
+
+       FILE-CONTROL.
+
+       DATA DIVISION.
+
+       FILE SECTION.
+
+       WORKING-STORAGE SECTION.
+
+           EXEC SQL
+               INCLUDE SQLCA
+           END-EXEC.
+
+           EXEC SQL
+               DECLARE CUR-CONCEPTOS CURSOR FOR
+                   SELECT CODIGO_CONCEPTO,
+                          DESCRIPCION,
+                          TIPO_COBRO,
+                          ESTADO
+                     FROM CONCEPTOS_COBRO
+           END-EXEC.
+
+       LINKAGE SECTION.
+
+           01 IN-FECHA-CONTABLE PIC 9(8).
+
+           EXEC SQL
+               INCLUDE CPY-CB-CCO
+           END-EXEC.
+
+       PROCEDURE DIVISION USING
+           IN-FECHA-CONTABLE
+           TB-CONCEPTOS-COBRO
+           CONCEPTOS-COBRO-COUNT.
+
+       100-MAIN.
+
+           MOVE 0 TO CONCEPTOS-COBRO-COUNT.
+           SET IDX-A TO 1.
+
+           EXEC SQL
+               OPEN CUR-CONCEPTOS
+           END-EXEC.
+
+           PERFORM UNTIL SQLCODE = 100
+                      OR CONCEPTOS-COBRO-COUNT >= 50
+
+               EXEC SQL
+                   FETCH CUR-CONCEPTOS
+                   INTO :CC-CODIGO-CONCEPTO(IDX-A),
+                        :CC-DESCRIPCION(IDX-A),
+                        :CC-TIPO-COBRO(IDX-A),
+                        :CC-ESTADO(IDX-A)
+               END-EXEC
+
+               IF SQLCODE = 0
+                   ADD 1 TO CONCEPTOS-COBRO-COUNT
+                   SET IDX-A UP BY 1
+               END-IF
+
+           END-PERFORM.
+
+           EXEC SQL
+               CLOSE CUR-CONCEPTOS
+           END-EXEC.
+
+           DISPLAY 'FECHA: ' IN-FECHA-CONTABLE.
+           DISPLAY 'CONCEPTOS CARGADOS: '
+                   CONCEPTOS-COBRO-COUNT.
+
+           GOBACK.
