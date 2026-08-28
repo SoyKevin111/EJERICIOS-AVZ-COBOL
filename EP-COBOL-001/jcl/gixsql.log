@@ -1,0 +1,12 @@
+[2026-06-05 17:34:18.772] [libgixsql] [error] Cannot initialize connection parameters, aborting, data source is [                                                                ]
+[2026-06-05 17:34:28.054] [libgixsql] [error] Cannot initialize connection parameters, aborting, data source is [                                                                ]
+[2026-06-05 17:35:07.272] [libgixsql] [error] Cannot initialize connection parameters, aborting, data source is [                                                                ]
+[2026-06-05 17:35:08.932] [libgixsql] [error] Cannot initialize connection parameters, aborting, data source is [                                                                ]
+[2026-06-05 17:35:14.739] [libgixsql] [error] Cannot initialize connection parameters, aborting, data source is [                                                                ]
+[2026-06-05 17:35:35.920] [libgixsql] [error] Cannot initialize connection parameters, aborting, data source is [                                                                ]
+[2026-06-05 17:37:52.416] [libgixsql] [error] Cannot initialize connection parameters, aborting, data source is [                                                                ]
+[2026-06-05 17:38:22.029] [libgixsql-pgsql] [error] libpq: connection to server at "localhost" (::1), port 5434 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+connection to server at "localhost" (127.0.0.1), port 5434 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+
