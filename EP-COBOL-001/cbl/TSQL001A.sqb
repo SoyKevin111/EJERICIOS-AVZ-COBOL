@@ -4,77 +4,408 @@
 
 
        ENVIRONMENT DIVISION.
-
        CONFIGURATION SECTION.
       * SOURCE-COMPUTER. IBM WITH DEBUGGING MODE.
-
        INPUT-OUTPUT SECTION.
        FILE-CONTROL.
-
+           SELECT MOV-FILE ASSIGN TO './data/MOVIMIENTOS.TXT'
+                  ORGANIZATION IS LINE SEQUENTIAL
+                  FILE STATUS IS FS-MOV.
+           SELECT ASI-FILE ASSIGN TO './data/ASIENTOS.DAT'
+                  ORGANIZATION IS LINE SEQUENTIAL
+                  FILE STATUS IS FS-ASI.
+           SELECT REP-FILE ASSIGN TO './data/REPORTE.TXT'
+                  ORGANIZATION IS LINE SEQUENTIAL
+                  FILE STATUS IS FS-REP.
        DATA DIVISION.
-
        FILE SECTION.
+       FD MOV-FILE.
+       01  REG-MOVIMIENTO.
+           05  RM-FECHA-MOVIMIENTO   PIC 9(08).
+           05  RM-NUMERO-MOVIMIENTO  PIC 9(10).
+           05  RM-CODIGO-SUCURSAL    PIC X(04).
+           05  RM-CODIGO-TIPO-MOV    PIC X(03).
+           05  RM-REFERENCIA         PIC X(20).
+           05  RM-VALOR              PIC 9(09)V99.
+
+       FD ASI-FILE.
+       01  REG-ASI-DAT.
+           05  DAT-FECHA-CONTABLE     PIC 9(08).
+           05  DAT-NUMERO-MOVIMIENTO  PIC 9(10).
+           05  DAT-CUENTA-CONTABLE    PIC 9(10).
+           05  DAT-TIPO-AFECTACION    PIC X(01).
+           05  DAT-VALOR              PIC 9(09)V99.
+           05  DAT-REFERENCIA         PIC X(20).
+
+       FD REP-FILE.
+       01  REP-REG                    PIC X(120).
+
 
        WORKING-STORAGE SECTION.
+       01 FS-MOV PIC XX.
+       01 FS-ASI PIC XX.
+       01 FS-REP PIC XX.
 
-           EXEC SQL
-             INCLUDE EMPREC
-           END-EXEC.
+       01  SW-FIN-ARCHIVO   PIC X VALUE 'N'.
+           88  FIN-ARCHIVO       VALUE 'S'.
 
-           01 DATASRC PIC X(64).
-           01 DBUSR  PIC X(64).
-           01 DBPWD  PIC X(64).
+       01  SW-MOV-VALIDO    PIC X VALUE 'S'.
+           88  MOV-VALIDO       VALUE 'S'.
+           88  MOV-RECHAZADO   VALUE 'N'.
 
-           01 T1     PIC 9(3) VALUE 0.
+       01 HV-CUENTA-CREDITO PIC 9(10).
+       01 HV-CUENTA-DEBITO  PIC 9(10).
+       01 HV-ESTADO         PIC X(01).
 
-           EXEC SQL
-             INCLUDE SQLCA
-           END-EXEC.
+      *    HOST VARS PARA EL INSERT DE ASIENTOS NO FD
+       01 HV-ASI-FECHA      PIC 9(08).
+       01 HV-ASI-NUMMOV     PIC 9(10).
+       01 HV-ASI-CUENTA     PIC 9(10).
+       01 HV-ASI-TIPOAFEC   PIC X(01).
+       01 HV-ASI-VALOR      PIC 9(09)V99.
+       01 HV-ASI-REF        PIC X(20).
+
+       01 IN-FECHA-CONTABLE PIC 9(8) VALUE ZERO.
+
+       01 DATASRC PIC X(64).
+       01 DBUSR  PIC X(64).
+       01 DBPWD  PIC X(64).
+
+       01 IDX-M PIC 99 VALUE ZERO.
+
+       01 WS-LEIDOS         PIC 9(07) VALUE 0.
+       01 WS-CONTABILIZADOS PIC 9(07) VALUE 0.
+       01 WS-RECHAZADOS     PIC 9(07) VALUE 0.
+
+      * contadores de rechazo por motivo
+       01 WS-RECH-SUC-INEX  PIC 9(07) VALUE 0.
+       01 WS-RECH-SUC-INAC  PIC 9(07) VALUE 0.
+       01 WS-RECH-TIPO-MOV  PIC 9(07) VALUE 0.
+       01 WS-RECH-CTA-INAC  PIC 9(07) VALUE 0.
+       01 WS-RECH-VALOR     PIC 9(07) VALUE 0.
+
+      * totales del reporte
+       01 WS-TOT-DEBITO     PIC 9(13)V99 VALUE 0.
+       01 WS-TOT-CREDITO    PIC 9(13)V99 VALUE 0.
+
+      * lineas del reporte etiqueta y valor
+       01 WS-LIN-NUM.
+           05 WS-LN-TXT     PIC X(36).
+           05 WS-LN-VAL     PIC ZZZZZZZZ9.
+
+       01 WS-LIN-MON.
+           05 WS-LM-TXT     PIC X(36).
+           05 WS-LM-VAL     PIC ZZZZZZZZ9.99.
+
+       01 WS-LIN-FEC.
+           05 FILLER        PIC X(36) VALUE 'FECHA CONTABLE'.
+           05 WS-LF-VAL     PIC 9(08).
+
+           EXEC SQL INCLUDE SQLCA END-EXEC.
+
 
        PROCEDURE DIVISION.
+           EXEC SQL WHENEVER SQLERROR CONTINUE END-EXEC.
+           EXEC SQL WHENEVER NOT FOUND CONTINUE END-EXEC.
+
+       100-MAIN.
+           PERFORM 000-CONNECT.
+           PERFORM 5000-CARGAR-ARCHIVOS.
+           DISPLAY 'INGRESE FECHA CONTABLE (AAAAMMDD): '
+                   WITH NO ADVANCING.
+           ACCEPT IN-FECHA-CONTABLE.
+           DISPLAY 'FECHA CONTABLE: ' IN-FECHA-CONTABLE.
+           PERFORM 5200-PROCESAR-DATOS.
+           PERFORM 5100-CERRAR-ARCHIVOS.
+           PERFORM 6000-GENERAR-REPORTE.
+           DISPLAY 'LEIDOS ......... ' WS-LEIDOS.
+           DISPLAY 'CONTABILIZADOS . ' WS-CONTABILIZADOS.
+           DISPLAY 'RECHAZADOS ..... ' WS-RECHAZADOS.
+           PERFORM 100-EXIT.
+
 
        000-CONNECT.
            ACCEPT DATASRC FROM ENVIRONMENT 'DB1SRC'.
            ACCEPT DBUSR FROM ENVIRONMENT 'DB1USER'.
            ACCEPT DBPWD FROM ENVIRONMENT 'DB1PASS'.
-
-           DISPLAY '***************************************'.
-           DISPLAY " DATASRC  : " DATASRC.
-           DISPLAY " DBUSR    : " DBUSR.
-           DISPLAY " DBPWD    : " DBPWD.
-           DISPLAY '***************************************'.
-
            EXEC SQL
-              CONNECT TO :DATASRC USER :DBUSR USING :DBPWD
+           CONNECT TO :DATASRC USER :DBUSR USING :DBPWD
            END-EXEC.
-
-           DISPLAY 'CONNECT SQLCODE: ' SQLCODE
-
-           IF SQLCODE <> 0 THEN
+           IF SQLCODE <> 0
+              DISPLAY 'ERROR DE CONEXION. SQLCODE=' SQLCODE
               GO TO 100-EXIT
            END-IF.
 
-       100-MAIN.
 
-      *     EXEC SQL
-      *        START TRANSACTION
-      *     END-EXEC.
-
-           EXEC SQL
-               SELECT COUNT(*) INTO :T1 
-               FROM CLIENTES
-               WHERE TIPO_CUENTA = 'AH'
-           END-EXEC.
-
-           DISPLAY 'SELECT SQLCODE : ' SQLCODE.
-
-           IF SQLCODE <> 0 THEN
+       5000-CARGAR-ARCHIVOS.
+           OPEN INPUT MOV-FILE.
+           IF FS-MOV <> '00'
+              DISPLAY 'ERROR, CARGA DE MOVIMIENTOS.TXT FS=' FS-MOV
+              GO TO 100-EXIT
+           END-IF.
+           OPEN OUTPUT ASI-FILE.
+           IF FS-ASI <> '00'
+              DISPLAY 'ERROR, CREACION DE ASIENTOS.DAT FS=' FS-ASI
               GO TO 100-EXIT
            END-IF.
 
-           DISPLAY 'Number of Records: ' T1.
+       5100-CERRAR-ARCHIVOS.
+           CLOSE MOV-FILE.
+           IF FS-MOV NOT = '00'
+              DISPLAY 'ERROR AL CERRAR MOVIMIENTOS.TXT ' FS-MOV
+           END-IF.
+           CLOSE ASI-FILE.
+           IF FS-ASI NOT = '00'
+              DISPLAY 'ERROR AL CERRAR ASIENTOS.DAT ' FS-ASI
+           END-IF.
 
-           EXEC SQL CONNECT RESET END-EXEC.
+       5200-PROCESAR-DATOS.
+           PERFORM UNTIL FIN-ARCHIVO
+              READ MOV-FILE
+                 AT END
+                    SET FIN-ARCHIVO TO TRUE
+                 NOT AT END
+                    ADD 1 TO WS-LEIDOS
+                    SET MOV-VALIDO TO TRUE
+                    PERFORM 5210-VALIDAR-MOVIMIENTOS
+                    IF MOV-VALIDO
+                       PERFORM 5220-GENERAR-ASIENTOS
+                       ADD 1 TO WS-CONTABILIZADOS
+                           EXEC SQL COMMIT END-EXEC
+                    ELSE
+                       ADD 1 TO WS-RECHAZADOS
+                    END-IF
+              END-READ
+           END-PERFORM.
+
+      
+       5210-VALIDAR-MOVIMIENTOS.
+
+      *    VALIDAR FECHA CONTABLE
+           IF IN-FECHA-CONTABLE NOT = 0
+              IF RM-FECHA-MOVIMIENTO NOT = IN-FECHA-CONTABLE
+                 SET MOV-RECHAZADO TO TRUE
+                 DISPLAY 'RECHAZO ' RM-NUMERO-MOVIMIENTO
+                         ' FECHA NO CORRESPONDE'
+              END-IF
+           END-IF.
+
+      *    VALIDAR VALOR
+           IF MOV-VALIDO
+              IF RM-VALOR <= 0
+                 SET MOV-RECHAZADO TO TRUE
+                 ADD 1 TO WS-RECH-VALOR
+                 DISPLAY 'RECHAZO ' RM-NUMERO-MOVIMIENTO
+                         ' VALOR INVALIDO'
+              END-IF
+           END-IF.
+
+      *    VALIDAR SUCURSAL Y ESTADO
+           IF MOV-VALIDO
+              MOVE SPACES TO HV-ESTADO
+                             EXEC SQL
+                             SELECT ESTADO INTO :HV-ESTADO
+                             FROM SUCURSALES
+                             WHERE CODIGO_SUCURSAL = :RM-CODIGO-SUCURSAL
+                             END-EXEC
+              IF SQLCODE NOT = 0
+                 SET MOV-RECHAZADO TO TRUE
+                 ADD 1 TO WS-RECH-SUC-INEX
+                 DISPLAY 'RECHAZO ' RM-NUMERO-MOVIMIENTO
+                         ' SUCURSAL INEXISTENTE'
+              ELSE
+                 IF HV-ESTADO NOT = 'A'
+                    SET MOV-RECHAZADO TO TRUE
+                    ADD 1 TO WS-RECH-SUC-INAC
+                    DISPLAY 'RECHAZO ' RM-NUMERO-MOVIMIENTO
+                            ' SUCURSAL INACTIVA'
+                 END-IF
+              END-IF
+           END-IF.
+
+      *    VALIDAR TIPO MOVIMIENTO Y OBTENER CUENTAS
+           IF MOV-VALIDO
+              MOVE SPACES TO HV-ESTADO
+                             EXEC SQL
+                            SELECT CUENTA_DEBITO, CUENTA_CREDITO, ESTADO
+                  INTO :HV-CUENTA-DEBITO, :HV-CUENTA-CREDITO, :HV-ESTADO
+                             FROM TIPOS_MOVIMIENTO
+                             WHERE CODIGO_TIPO_MOV = :RM-CODIGO-TIPO-MOV
+                             END-EXEC
+              IF SQLCODE NOT = 0 OR HV-ESTADO NOT = 'A'
+                 SET MOV-RECHAZADO TO TRUE
+                 ADD 1 TO WS-RECH-TIPO-MOV
+                 DISPLAY 'RECHAZO ' RM-NUMERO-MOVIMIENTO
+                         ' TIPO MOVIMIENTO INVALIDO'
+              END-IF
+           END-IF.
+
+      *    VALIDAR CUENTA DEBITO
+           IF MOV-VALIDO
+              MOVE SPACES TO HV-ESTADO
+                             EXEC SQL
+                             SELECT ESTADO INTO :HV-ESTADO
+                             FROM PLAN_CUENTAS
+                             WHERE CUENTA_CONTABLE = :HV-CUENTA-DEBITO
+                             END-EXEC
+              IF SQLCODE NOT = 0 OR HV-ESTADO NOT = 'A'
+                 SET MOV-RECHAZADO TO TRUE
+                 ADD 1 TO WS-RECH-CTA-INAC
+                 DISPLAY 'RECHAZO ' RM-NUMERO-MOVIMIENTO
+                         ' CUENTA DEBITO INVALIDA'
+              END-IF
+           END-IF.
+
+      *    VALIDAR CUENTA CREDITO
+           IF MOV-VALIDO
+              MOVE SPACES TO HV-ESTADO
+                             EXEC SQL
+                             SELECT ESTADO INTO :HV-ESTADO
+                             FROM PLAN_CUENTAS
+                             WHERE CUENTA_CONTABLE = :HV-CUENTA-CREDITO
+                             END-EXEC
+              IF SQLCODE NOT = 0 OR HV-ESTADO NOT = 'A'
+                 SET MOV-RECHAZADO TO TRUE
+                 ADD 1 TO WS-RECH-CTA-INAC
+                 DISPLAY 'RECHAZO ' RM-NUMERO-MOVIMIENTO
+                         ' CUENTA CREDITO INVALIDA'
+              END-IF
+           END-IF.
+
+      *    GRABAR MOVIMIENTO EN BASE DE DATOS
+           IF MOV-VALIDO
+              EXEC SQL
+              INSERT INTO MOVIMIENTOS
+              (FECHA_MOVIMIENTO, NUMERO_MOVIMIENTO,
+              CODIGO_SUCURSAL, CODIGO_TIPO_MOV,
+              REFERENCIA, VALOR, FECHA_CONTABLE)
+              VALUES
+              (:RM-FECHA-MOVIMIENTO, :RM-NUMERO-MOVIMIENTO,
+              :RM-CODIGO-SUCURSAL, :RM-CODIGO-TIPO-MOV,
+              :RM-REFERENCIA, :RM-VALOR, :IN-FECHA-CONTABLE)
+              END-EXEC
+              IF SQLCODE NOT = 0
+                 SET MOV-RECHAZADO TO TRUE
+                 DISPLAY 'RECHAZO ' RM-NUMERO-MOVIMIENTO
+                         ' ERROR GRABANDO MOVIMIENTO SQLCODE=' SQLCODE
+              END-IF
+           END-IF.
+
+     
+       5220-GENERAR-ASIENTOS.
+           PERFORM VARYING IDX-M FROM 1 BY 1 UNTIL IDX-M > 2
+              MOVE IN-FECHA-CONTABLE    TO HV-ASI-FECHA
+              MOVE RM-NUMERO-MOVIMIENTO TO HV-ASI-NUMMOV
+              MOVE RM-VALOR             TO HV-ASI-VALOR
+              MOVE RM-REFERENCIA        TO HV-ASI-REF
+              EVALUATE IDX-M
+              WHEN 1
+                 MOVE HV-CUENTA-DEBITO  TO HV-ASI-CUENTA
+                 MOVE 'D'               TO HV-ASI-TIPOAFEC
+                 ADD RM-VALOR           TO WS-TOT-DEBITO
+              WHEN 2
+                 MOVE HV-CUENTA-CREDITO TO HV-ASI-CUENTA
+                 MOVE 'C'               TO HV-ASI-TIPOAFEC
+                 ADD RM-VALOR           TO WS-TOT-CREDITO
+              END-EVALUATE
+
+              EXEC SQL
+              INSERT INTO ASIENTOS_CONTABLES
+              (FECHA_CONTABLE, NUMERO_MOVIMIENTO,
+              CUENTA_CONTABLE, TIPO_AFECTACION,
+              VALOR, REFERENCIA)
+              VALUES
+              (:HV-ASI-FECHA, :HV-ASI-NUMMOV,
+              :HV-ASI-CUENTA, :HV-ASI-TIPOAFEC,
+              :HV-ASI-VALOR, :HV-ASI-REF)
+              END-EXEC
+              IF SQLCODE NOT = 0
+                 DISPLAY 'ERROR INSERT ASIENTO SQLCODE=' SQLCODE
+                         ' MOV=' RM-NUMERO-MOVIMIENTO
+              ELSE
+                 MOVE HV-ASI-FECHA    TO DAT-FECHA-CONTABLE
+                 MOVE HV-ASI-NUMMOV   TO DAT-NUMERO-MOVIMIENTO
+                 MOVE HV-ASI-CUENTA   TO DAT-CUENTA-CONTABLE
+                 MOVE HV-ASI-TIPOAFEC TO DAT-TIPO-AFECTACION
+                 MOVE HV-ASI-VALOR    TO DAT-VALOR
+                 MOVE HV-ASI-REF      TO DAT-REFERENCIA
+                 WRITE REG-ASI-DAT
+                 IF FS-ASI NOT = '00'
+                    DISPLAY 'ERROR ESCRITURA ASIENTO FS=' FS-ASI
+                 END-IF
+              END-IF
+           END-PERFORM.
+
+
+      * genera el archivo de reporte
+       6000-GENERAR-REPORTE.
+           OPEN OUTPUT REP-FILE.
+
+           MOVE IN-FECHA-CONTABLE TO WS-LF-VAL.
+           WRITE REP-REG FROM WS-LIN-FEC.
+           MOVE SPACES TO REP-REG.
+           WRITE REP-REG.
+
+           MOVE 'TOTAL REGISTROS LEIDOS'           TO WS-LN-TXT.
+           MOVE WS-LEIDOS                          TO WS-LN-VAL.
+           WRITE REP-REG FROM WS-LIN-NUM.
+
+           MOVE 'TOTAL MOVIMIENTOS CONTABILIZADOS' TO WS-LN-TXT.
+           MOVE WS-CONTABILIZADOS                  TO WS-LN-VAL.
+           WRITE REP-REG FROM WS-LIN-NUM.
+
+           MOVE 'TOTAL MOVIMIENTOS RECHAZADOS'     TO WS-LN-TXT.
+           MOVE WS-RECHAZADOS                      TO WS-LN-VAL.
+           WRITE REP-REG FROM WS-LIN-NUM.
+
+           MOVE SPACES TO REP-REG.
+           WRITE REP-REG.
+
+           MOVE 'RECHAZADOS POR SUCURSAL INEXISTENTE' TO WS-LN-TXT.
+           MOVE WS-RECH-SUC-INEX                      TO WS-LN-VAL.
+           WRITE REP-REG FROM WS-LIN-NUM.
+
+           MOVE 'RECHAZADOS POR SUCURSAL INACTIVA'  TO WS-LN-TXT.
+           MOVE WS-RECH-SUC-INAC                    TO WS-LN-VAL.
+           WRITE REP-REG FROM WS-LIN-NUM.
+
+           MOVE 'RECHAZADOS POR TIPO MOVIMIENTO'    TO WS-LN-TXT.
+           MOVE WS-RECH-TIPO-MOV                    TO WS-LN-VAL.
+           WRITE REP-REG FROM WS-LIN-NUM.
+
+           MOVE 'RECHAZADOS POR CUENTA INACTIVA'    TO WS-LN-TXT.
+           MOVE WS-RECH-CTA-INAC                    TO WS-LN-VAL.
+           WRITE REP-REG FROM WS-LIN-NUM.
+
+           MOVE 'RECHAZADOS POR VALOR INVALIDO'     TO WS-LN-TXT.
+           MOVE WS-RECH-VALOR                       TO WS-LN-VAL.
+           WRITE REP-REG FROM WS-LIN-NUM.
+
+           MOVE SPACES TO REP-REG.
+           WRITE REP-REG.
+
+           MOVE 'TOTAL DEBITOS GENERADOS'           TO WS-LM-TXT.
+           MOVE WS-TOT-DEBITO                       TO WS-LM-VAL.
+           WRITE REP-REG FROM WS-LIN-MON.
+
+           MOVE 'TOTAL CREDITOS GENERADOS'          TO WS-LM-TXT.
+           MOVE WS-TOT-CREDITO                      TO WS-LM-VAL.
+           WRITE REP-REG FROM WS-LIN-MON.
+
+           MOVE SPACES TO REP-REG.
+           WRITE REP-REG.
+
+           IF WS-TOT-DEBITO = WS-TOT-CREDITO
+              MOVE 'CUADRE CONTABLE : CORRECTO'  TO REP-REG
+           ELSE
+              MOVE 'CUADRE CONTABLE : DESCUADRE' TO REP-REG
+           END-IF.
+           WRITE REP-REG.
+
+           CLOSE REP-FILE.
+           DISPLAY 'REPORTE GENERADO EN ./data/REPORTE.TXT'.
+
 
        100-EXIT.
-      *       STOP RUN.
+           EXEC SQL CONNECT RESET END-EXEC.
+           STOP RUN.
