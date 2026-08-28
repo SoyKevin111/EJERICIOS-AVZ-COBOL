@@ -20,86 +20,20 @@
        DATA DIVISION.
        FILE SECTION.
        FD MOV-FILE.
-       01  REG-MOVIMIENTO.
-           05  RM-FECHA-MOVIMIENTO   PIC 9(08).
-           05  RM-NUMERO-MOVIMIENTO  PIC 9(10).
-           05  RM-CODIGO-SUCURSAL    PIC X(04).
-           05  RM-CODIGO-TIPO-MOV    PIC X(03).
-           05  RM-REFERENCIA         PIC X(20).
-           05  RM-VALOR              PIC 9(09)V99.
+           EXEC SQL INCLUDE CPY-CB-MOV END-EXEC.
 
        FD ASI-FILE.
-       01  REG-ASI-DAT.
-           05  DAT-FECHA-CONTABLE     PIC 9(08).
-           05  DAT-NUMERO-MOVIMIENTO  PIC 9(10).
-           05  DAT-CUENTA-CONTABLE    PIC 9(10).
-           05  DAT-TIPO-AFECTACION    PIC X(01).
-           05  DAT-VALOR              PIC 9(09)V99.
-           05  DAT-REFERENCIA         PIC X(20).
+           EXEC SQL INCLUDE CPY-CB-ASI END-EXEC.
 
        FD REP-FILE.
-       01  REP-REG                    PIC X(120).
+           EXEC SQL INCLUDE CPY-CB-REP END-EXEC.
 
 
        WORKING-STORAGE SECTION.
-       01 FS-MOV PIC XX.
-       01 FS-ASI PIC XX.
-       01 FS-REP PIC XX.
 
-       01  SW-FIN-ARCHIVO   PIC X VALUE 'N'.
-           88  FIN-ARCHIVO       VALUE 'S'.
-
-       01  SW-MOV-VALIDO    PIC X VALUE 'S'.
-           88  MOV-VALIDO       VALUE 'S'.
-           88  MOV-RECHAZADO   VALUE 'N'.
-
-       01 HV-CUENTA-CREDITO PIC 9(10).
-       01 HV-CUENTA-DEBITO  PIC 9(10).
-       01 HV-ESTADO         PIC X(01).
-
-      *    HOST VARS PARA EL INSERT DE ASIENTOS NO FD
-       01 HV-ASI-FECHA      PIC 9(08).
-       01 HV-ASI-NUMMOV     PIC 9(10).
-       01 HV-ASI-CUENTA     PIC 9(10).
-       01 HV-ASI-TIPOAFEC   PIC X(01).
-       01 HV-ASI-VALOR      PIC 9(09)V99.
-       01 HV-ASI-REF        PIC X(20).
-
-       01 IN-FECHA-CONTABLE PIC 9(8) VALUE ZERO.
-
-       01 DATASRC PIC X(64).
-       01 DBUSR  PIC X(64).
-       01 DBPWD  PIC X(64).
-
-       01 IDX-M PIC 99 VALUE ZERO.
-
-       01 WS-LEIDOS         PIC 9(07) VALUE 0.
-       01 WS-CONTABILIZADOS PIC 9(07) VALUE 0.
-       01 WS-RECHAZADOS     PIC 9(07) VALUE 0.
-
-      * contadores de rechazo por motivo
-       01 WS-RECH-SUC-INEX  PIC 9(07) VALUE 0.
-       01 WS-RECH-SUC-INAC  PIC 9(07) VALUE 0.
-       01 WS-RECH-TIPO-MOV  PIC 9(07) VALUE 0.
-       01 WS-RECH-CTA-INAC  PIC 9(07) VALUE 0.
-       01 WS-RECH-VALOR     PIC 9(07) VALUE 0.
-
-      * totales del reporte
-       01 WS-TOT-DEBITO     PIC 9(13)V99 VALUE 0.
-       01 WS-TOT-CREDITO    PIC 9(13)V99 VALUE 0.
-
-      * lineas del reporte etiqueta y valor
-       01 WS-LIN-NUM.
-           05 WS-LN-TXT     PIC X(36).
-           05 WS-LN-VAL     PIC ZZZZZZZZ9.
-
-       01 WS-LIN-MON.
-           05 WS-LM-TXT     PIC X(36).
-           05 WS-LM-VAL     PIC ZZZZZZZZ9.99.
-
-       01 WS-LIN-FEC.
-           05 FILLER        PIC X(36) VALUE 'FECHA CONTABLE'.
-           05 WS-LF-VAL     PIC 9(08).
+           EXEC SQL INCLUDE CPY-CB-WS END-EXEC.
+           EXEC SQL INCLUDE CPY-CB-HV END-EXEC.
+           EXEC SQL INCLUDE CPY-CB-CX END-EXEC.
 
            EXEC SQL INCLUDE SQLCA END-EXEC.
 
