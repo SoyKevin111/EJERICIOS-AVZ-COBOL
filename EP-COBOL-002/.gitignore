@@ -34,3 +34,4 @@ REPORTE.TXT
 # SO / editor
 .DS_Store
 *.swp
+gixsql.log

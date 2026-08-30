@@ -17,17 +17,17 @@
 
        WORKING-STORAGE SECTION.
 
-           01 DATASRC PIC X(64).
-           01 DBUSR  PIC X(64).
-           01 DBPWD  PIC X(64).
+       01 DATASRC PIC X(64).
+       01 DBUSR  PIC X(64).
+       01 DBPWD  PIC X(64).
 
-           01 IN-FECHA-CONTABLE PIC 9(8).
+       01 IN-FECHA-CONTABLE PIC 9(8).
 
-           *> CONCEPTOS COBRO TABLA
+      * CONCEPTOS COBRO WS Y TB
            EXEC SQL INCLUDE CPY-CB-CCO END-EXEC.
 
            EXEC SQL
-             INCLUDE SQLCA
+              INCLUDE SQLCA
            END-EXEC.
 
        PROCEDURE DIVISION.
@@ -36,9 +36,9 @@
            PERFORM 000-CONNECT.
            DISPLAY 'INGRESA TU FECHA: '.
            ACCEPT IN-FECHA-CONTABLE.
-           CALL 'CARGAR-CONCEPTOS' 
-               USING IN-FECHA-CONTABLE TB-CONCEPTOS-COBRO
-                CONCEPTOS-COBRO-COUNT
+           CALL 'CARGAR-CONCEPTOS'
+                USING IN-FECHA-CONTABLE WS-CONCEPTOS-COBRO
+                      CONCEPTOS-COBRO-COUNT
            END-CALL.
            PERFORM 100-EXIT.
 
@@ -48,7 +48,7 @@
            ACCEPT DBPWD FROM ENVIRONMENT 'DB1PASS'.
 
            EXEC SQL
-              CONNECT TO :DATASRC USER :DBUSR USING :DBPWD
+               CONNECT TO :DATASRC USER :DBUSR USING :DBPWD
            END-EXEC.
 
            DISPLAY 'CONECTADO A DB'. 

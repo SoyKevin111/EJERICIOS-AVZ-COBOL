@@ -6,7 +6,6 @@
 -- =========================================================
 -- 1. TABLA FACULTADES
 -- =========================================================
-DROP TABLE IF EXISTS FACULTADES CASCADE;
 
 CREATE TABLE FACULTADES (
     CODIGO   VARCHAR(5)  NOT NULL,
@@ -32,7 +31,6 @@ INSERT INTO FACULTADES (CODIGO, NOMBRE, ESTADO) VALUES
 -- =========================================================
 -- 2. TABLA ESTUDIANTES
 -- =========================================================
-DROP TABLE IF EXISTS ESTUDIANTES CASCADE;
 
 CREATE TABLE ESTUDIANTES (
     CODIGO_ESTUDIANTE  NUMERIC(10) NOT NULL,
@@ -64,7 +62,6 @@ INSERT INTO ESTUDIANTES (CODIGO_ESTUDIANTE, NOMBRE, FACULTAD, ESTADO, FECHA_INGR
 -- =========================================================
 -- 3. TABLA CONCEPTOS_COBRO
 -- =========================================================
-DROP TABLE IF EXISTS CONCEPTOS_COBRO CASCADE;
 
 CREATE TABLE CONCEPTOS_COBRO (
     CODIGO_CONCEPTO  VARCHAR(4)  NOT NULL,

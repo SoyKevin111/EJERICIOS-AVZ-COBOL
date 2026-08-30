@@ -19,65 +19,67 @@
 
        WORKING-STORAGE SECTION.
 
-           EXEC SQL
-               INCLUDE SQLCA
-           END-EXEC.
+           EXEC SQL INCLUDE SQLCA END-EXEC.
+
+       01 TB-CONCEPTOS-COBRO.
+          10 HV-CODIGO-CONCEPTO PIC X(4).
+          10 HV-DESCRIPCION      PIC X(30).
+          10 HV-TIPO-COBRO       PIC X(1).
+          10 HV-ESTADO           PIC X(1).
 
            EXEC SQL
-               DECLARE CUR-CONCEPTOS CURSOR FOR
-                   SELECT CODIGO_CONCEPTO,
-                          DESCRIPCION,
-                          TIPO_COBRO,
-                          ESTADO
-                     FROM CONCEPTOS_COBRO
+              DECLARE CUR_CONCEPTOS 
+              CURSOR FOR
+               SELECT 
+                   CODIGO_CONCEPTO,
+                   DESCRIPCION,
+                   TIPO_COBRO,
+                   ESTADO
+               FROM CONCEPTOS_COBRO
            END-EXEC.
 
        LINKAGE SECTION.
-
            01 IN-FECHA-CONTABLE PIC 9(8).
-
-           EXEC SQL
-               INCLUDE CPY-CB-CCO
-           END-EXEC.
+           EXEC SQL INCLUDE CPY-CB-CCO END-EXEC.
 
        PROCEDURE DIVISION USING
            IN-FECHA-CONTABLE
-           TB-CONCEPTOS-COBRO
+           WS-CONCEPTOS-COBRO
            CONCEPTOS-COBRO-COUNT.
 
        100-MAIN.
-
-           MOVE 0 TO CONCEPTOS-COBRO-COUNT.
            SET IDX-A TO 1.
 
-           EXEC SQL
-               OPEN CUR-CONCEPTOS
-           END-EXEC.
+           EXEC SQL START TRANSACTION END-EXEC.
 
-           PERFORM UNTIL SQLCODE = 100
-                      OR CONCEPTOS-COBRO-COUNT >= 50
+           EXEC SQL OPEN CUR_CONCEPTOS END-EXEC.
 
+           PERFORM UNTIL SQLCODE NOT = 0
                EXEC SQL
-                   FETCH CUR-CONCEPTOS
-                   INTO :CC-CODIGO-CONCEPTO(IDX-A),
-                        :CC-DESCRIPCION(IDX-A),
-                        :CC-TIPO-COBRO(IDX-A),
-                        :CC-ESTADO(IDX-A)
+                   FETCH CUR_CONCEPTOS
+                   INTO :HV-CODIGO-CONCEPTO,
+                        :HV-DESCRIPCION,
+                        :HV-TIPO-COBRO,
+                        :HV-ESTADO
                END-EXEC
 
                IF SQLCODE = 0
+                   MOVE HV-CODIGO-CONCEPTO TO CC-CODIGO-CONCEPTO(IDX-A)
+                   MOVE HV-DESCRIPCION     TO CC-DESCRIPCION(IDX-A)
+                   MOVE HV-TIPO-COBRO      TO CC-TIPO-COBRO(IDX-A)
+                   MOVE HV-ESTADO          TO CC-ESTADO(IDX-A)
                    ADD 1 TO CONCEPTOS-COBRO-COUNT
                    SET IDX-A UP BY 1
                END-IF
 
            END-PERFORM.
 
-           EXEC SQL
-               CLOSE CUR-CONCEPTOS
-           END-EXEC.
+           IF SQLCODE = 0
+               EXEC SQL CLOSE CUR_CONCEPTOS END-EXEC
+           END-IF.
+           EXEC SQL COMMIT END-EXEC.
 
            DISPLAY 'FECHA: ' IN-FECHA-CONTABLE.
-           DISPLAY 'CONCEPTOS CARGADOS: '
-                   CONCEPTOS-COBRO-COUNT.
+           DISPLAY 'CONCEPTOS CARGADOS: 'CONCEPTOS-COBRO-COUNT.
 
            GOBACK.
