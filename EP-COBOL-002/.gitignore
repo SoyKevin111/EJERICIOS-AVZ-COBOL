@@ -25,11 +25,10 @@ gixsql.log
 *.gixsql.log
 
 # Salidas en tiempo de ejecución del programa
-*.dat
-*.DAT
 COBROS_GENERADOS.*
 MOVIMIENTOS_CONSOLIDADOS.*
 REPORTE.TXT
+/gen/*
 
 # SO / editor
 .DS_Store

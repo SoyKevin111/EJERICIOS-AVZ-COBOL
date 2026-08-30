@@ -34,11 +34,7 @@
 
        100-MAIN.
            PERFORM 000-CONNECT.
-           DISPLAY 'INGRESA TU FECHA: '.
-           ACCEPT IN-FECHA-CONTABLE.
-           CALL 'CARGAR-CONCEPTOS'
-                USING IN-FECHA-CONTABLE WS-CONCEPTOS-COBRO
-                      CONCEPTOS-COBRO-COUNT
+           CALL 'CONSOLIDAR-MOVIMIENTOS'
            END-CALL.
            PERFORM 100-EXIT.
 
