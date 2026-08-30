@@ -36,10 +36,11 @@
                    TIPO_COBRO,
                    ESTADO
                FROM CONCEPTOS_COBRO
+               ORDER BY CODIGO_CONCEPTO
            END-EXEC.
 
        LINKAGE SECTION.
-           01 IN-FECHA-CONTABLE PIC 9(8).
+       01 IN-FECHA-CONTABLE PIC 9(8).
            EXEC SQL INCLUDE CPY-CB-CCO END-EXEC.
 
        PROCEDURE DIVISION USING
@@ -48,13 +49,12 @@
            CONCEPTOS-COBRO-COUNT.
 
        100-MAIN.
-           SET IDX-A TO 1.
 
            EXEC SQL START TRANSACTION END-EXEC.
 
            EXEC SQL OPEN CUR_CONCEPTOS END-EXEC.
 
-           PERFORM UNTIL SQLCODE NOT = 0
+           PERFORM VARYING IDX-A FROM 1 BY 1 UNTIL SQLCODE NOT = 0
                EXEC SQL
                    FETCH CUR_CONCEPTOS
                    INTO :HV-CODIGO-CONCEPTO,
@@ -69,7 +69,6 @@
                    MOVE HV-TIPO-COBRO      TO CC-TIPO-COBRO(IDX-A)
                    MOVE HV-ESTADO          TO CC-ESTADO(IDX-A)
                    ADD 1 TO CONCEPTOS-COBRO-COUNT
-                   SET IDX-A UP BY 1
                END-IF
 
            END-PERFORM.
@@ -81,5 +80,17 @@
 
            DISPLAY 'FECHA: ' IN-FECHA-CONTABLE.
            DISPLAY 'CONCEPTOS CARGADOS: 'CONCEPTOS-COBRO-COUNT.
-
+           PERFORM 1000-MOSTRAR-CONCEPTOS.
            GOBACK.
+
+       1000-MOSTRAR-CONCEPTOS.
+           PERFORM VARYING IDX-A FROM 1 BY 1 
+               UNTIL IDX-A > CONCEPTOS-COBRO-COUNT
+                   DISPLAY 'CODIGO: ' CC-CODIGO-CONCEPTO(IDX-A) ' '
+                       WITH NO ADVANCING
+                   DISPLAY 'DESCRIPCION: ' CC-DESCRIPCION(IDX-A) ' '
+                       WITH NO ADVANCING
+                   DISPLAY 'TIPO: ' CC-TIPO-COBRO(IDX-A) ' '
+                       WITH NO ADVANCING
+                   DISPLAY 'ESTADO: ' CC-ESTADO(IDX-A)
+           END-PERFORM.
