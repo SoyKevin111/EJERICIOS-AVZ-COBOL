@@ -80,17 +80,4 @@
 
            DISPLAY 'FECHA: ' IN-FECHA-CONTABLE.
            DISPLAY 'CONCEPTOS CARGADOS: 'CONCEPTOS-COBRO-COUNT.
-           PERFORM 1000-MOSTRAR-CONCEPTOS.
            GOBACK.
-
-       1000-MOSTRAR-CONCEPTOS.
-           PERFORM VARYING IDX-A FROM 1 BY 1 
-               UNTIL IDX-A > CONCEPTOS-COBRO-COUNT
-                   DISPLAY 'CODIGO: ' CC-CODIGO-CONCEPTO(IDX-A) ' '
-                       WITH NO ADVANCING
-                   DISPLAY 'DESCRIPCION: ' CC-DESCRIPCION(IDX-A) ' '
-                       WITH NO ADVANCING
-                   DISPLAY 'TIPO: ' CC-TIPO-COBRO(IDX-A) ' '
-                       WITH NO ADVANCING
-                   DISPLAY 'ESTADO: ' CC-ESTADO(IDX-A)
-           END-PERFORM.

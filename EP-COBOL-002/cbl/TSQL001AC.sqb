@@ -34,6 +34,10 @@
 
        100-MAIN.
            PERFORM 000-CONNECT.
+           CALL 'CARGAR-CONCEPTOS' USING 
+           IN-FECHA-CONTABLE WS-CONCEPTOS-COBRO CONCEPTOS-COBRO-COUNT
+           END-CALL.
+           PERFORM 1000-MOSTRAR-CONCEPTOS.
            CALL 'CONSOLIDAR-MOVIMIENTOS'
            END-CALL.
            PERFORM 100-EXIT.
@@ -52,6 +56,18 @@
            IF SQLCODE <> 0 THEN
               GO TO 100-EXIT
            END-IF.
+       
+       1000-MOSTRAR-CONCEPTOS.
+           PERFORM VARYING IDX-A FROM 1 BY 1 
+                 UNTIL IDX-A > CONCEPTOS-COBRO-COUNT
+                     DISPLAY 'CODIGO: ' CC-CODIGO-CONCEPTO(IDX-A) ' '
+                         WITH NO ADVANCING
+                     DISPLAY 'DESCRIPCION: ' CC-DESCRIPCION(IDX-A) ' '
+                         WITH NO ADVANCING
+                     DISPLAY 'TIPO: ' CC-TIPO-COBRO(IDX-A) ' '
+                         WITH NO ADVANCING
+                     DISPLAY 'ESTADO: ' CC-ESTADO(IDX-A)
+           END-PERFORM.
 
        100-EXIT.
            EXEC SQL CONNECT RESET END-EXEC.

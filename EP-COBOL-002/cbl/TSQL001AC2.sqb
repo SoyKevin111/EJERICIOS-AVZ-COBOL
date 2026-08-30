@@ -56,4 +56,9 @@
                ON ASCENDING KEY MG-FECHA-CARGO
                USING CAAC-FILE CASE-FILE
                GIVING MOVCO-FILE.
+           IF MOVCO-STATUS <> '00'
+               DISPLAY 'MOVIMIENTO CONSOLIDADO EXITOSO!'
+           ELSE
+               DISPLAY 'ERROR!'
+           END-IF.
            GOBACK.
