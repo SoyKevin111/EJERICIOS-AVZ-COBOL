@@ -10,3 +10,21 @@
 connection to server at "localhost" (127.0.0.1), port 5434 failed: Connection refused
 	Is the server running on that host and accepting TCP/IP connections?
 
+[2026-08-31 05:51:36.695] [libgixsql] [error] move_to_first_record failed: -122 - 02000: 
+[2026-08-31 05:51:36.699] [libgixsql] [error] move_to_first_record failed: -122 - 02000: 
+[2026-08-31 05:51:36.701] [libgixsql] [error] move_to_first_record failed: -122 - 02000: 
+[2026-08-31 05:51:36.704] [libgixsql] [error] move_to_first_record failed: -122 - 02000: 
+[2026-08-31 05:51:36.710] [libgixsql-pgsql] [error] ERROR (7 - 22P02): ERROR:  invalid input syntax for type numeric: "          "
+CONTEXT:  unnamed portal parameter $1 = '...'
+
+[2026-08-31 05:51:36.713] [libgixsql] [error] move_to_first_record failed: -122 - 02000: 
+[2026-08-31 05:51:36.716] [libgixsql] [error] move_to_first_record failed: -122 - 02000: 
+[2026-08-31 06:01:24.868] [libgixsql] [error] move_to_first_record failed: -122 - 02000: 
+[2026-08-31 06:01:24.870] [libgixsql] [error] move_to_first_record failed: -122 - 02000: 
+[2026-08-31 06:01:24.873] [libgixsql] [error] move_to_first_record failed: -122 - 02000: 
+[2026-08-31 06:01:24.875] [libgixsql] [error] move_to_first_record failed: -122 - 02000: 
+[2026-08-31 06:01:24.877] [libgixsql-pgsql] [error] ERROR (7 - 22P02): ERROR:  invalid input syntax for type numeric: "          "
+CONTEXT:  unnamed portal parameter $1 = '...'
+
+[2026-08-31 06:01:24.880] [libgixsql] [error] move_to_first_record failed: -122 - 02000: 
+[2026-08-31 06:01:24.883] [libgixsql] [error] move_to_first_record failed: -122 - 02000: 
