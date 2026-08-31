@@ -30,3 +30,4 @@ CONTEXT:  unnamed portal parameter $1 = '...'
 [2026-08-31 06:01:24.883] [libgixsql] [error] move_to_first_record failed: -122 - 02000: 
 [2026-08-31 17:05:12.521] [libgixsql] [error] move_to_first_record failed: -122 - 02000: 
 [2026-08-31 17:57:53.192] [libgixsql] [error] move_to_first_record failed: -122 - 02000: 
+[2026-08-31 19:52:22.875] [libgixsql] [error] move_to_first_record failed: -122 - 02000: 

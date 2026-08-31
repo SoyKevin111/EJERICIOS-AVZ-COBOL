@@ -3,3 +3,4 @@
           10 HV-CC-DESCRIPCION      PIC X(30).
           10 HV-CC-TIPO-COBRO       PIC X(1).
           10 HV-CC-ESTADO           PIC X(1).
+          10 HV-CC-CENTRO-COSTO PIC 9(8).

@@ -30,7 +30,8 @@
                    CODIGO_CONCEPTO,
                    DESCRIPCION,
                    TIPO_COBRO,
-                   ESTADO
+                   ESTADO,
+                   CENTRO_COSTO
                FROM CONCEPTOS_COBRO
                ORDER BY CODIGO_CONCEPTO
            END-EXEC.
@@ -53,7 +54,8 @@
                    INTO :HV-CC-CODIGO-CONCEPTO,
                         :HV-CC-DESCRIPCION,
                         :HV-CC-TIPO-COBRO,
-                        :HV-CC-ESTADO
+                        :HV-CC-ESTADO,
+                        :HV-CC-CENTRO-COSTO
                END-EXEC
 
                IF SQLCODE = 0
@@ -61,6 +63,7 @@
                  MOVE HV-CC-DESCRIPCION TO CC-DESCRIPCION(IDX-A)
                  MOVE HV-CC-TIPO-COBRO TO CC-TIPO-COBRO(IDX-A)
                  MOVE HV-CC-ESTADO TO CC-ESTADO(IDX-A)
+                 MOVE HV-CC-CENTRO-COSTO TO CC-CENTRO-COSTO(IDX-A)
                  ADD 1 TO CONCEPTOS-COBRO-COUNT
                END-IF
 
