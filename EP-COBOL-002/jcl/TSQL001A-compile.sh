@@ -7,9 +7,10 @@ PGM=TSQL001A
 SRC_MAIN=TSQL001AC
 SRC_SUB1="TSQL001AC1"
 SRC_SUB2="TSQL001AC2"
+SRC_SUB3="TSQL001AC3"
 
 # Sources with EXEC SQL (need the GixSQL preprocessor)
-SRC_ESQL="$SRC_MAIN $SRC_SUB1"
+SRC_ESQL="$SRC_MAIN $SRC_SUB1 $SRC_SUB3"
 # Plain COBOL sources (no EXEC SQL): go straight to cobc.
 # TSQL001AC2 uses SD/MERGE and has no SQL; gixpp cannot parse SD.
 SRC_PLAIN="$SRC_SUB2"
@@ -24,7 +25,7 @@ COBCOPY="../cpy"
 SQLCOPY="$GIXSQL_HOME/share/gixsql/copy"
 
 # All sources: main first, then subprograms
-SRC_ALL="$SRC_MAIN $SRC_SUB1 $SRC_SUB2"
+SRC_ALL="$SRC_MAIN $SRC_SUB1 $SRC_SUB2 $SRC_SUB3"
 
 # Remove old versions
 rm -f ../bin/$PGM

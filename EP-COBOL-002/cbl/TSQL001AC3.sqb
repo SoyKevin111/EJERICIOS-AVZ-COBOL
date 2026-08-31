@@ -1,0 +1,189 @@
+
+       IDENTIFICATION DIVISION.
+
+       PROGRAM-ID. PROCESAR-REGISTROS.
+
+       ENVIRONMENT DIVISION.
+
+       CONFIGURATION SECTION.
+
+      * SOURCE-COMPUTER. IBM WITH DEBUGGING MODE.
+
+       INPUT-OUTPUT SECTION.
+       FILE-CONTROL.
+           SELECT MOVCO-FILE
+               ASSIGN TO './gen/MOVIMIENTOS-CONSOLIDADOS.DAT'
+           ORGANIZATION IS SEQUENTIAL
+           FILE STATUS MOVCO-STATUS.
+           SELECT COGE-FILE
+               ASSIGN TO './gen/COBROS-GENERADOS.DAT'
+           ORGANIZATION IS SEQUENTIAL
+           FILE STATUS COGE-STATUS.
+
+       DATA DIVISION.
+       FILE SECTION.
+           FD MOVCO-FILE.
+               COPY CPY-CB-MOV-MC. *>MOVIMIENTOS CONSOLIDADOS
+
+           FD COGE-FILE.
+           01 RG-COBROS-GENERADOS.
+               05 CG-FECHA-COBRO PIC 9(8).
+               05 CG-CODIGO-ESTUDIANTE PIC 9(10).
+               05 CG-CODIGO-FACULTAD PIC X(5).
+               05 CG-CODIGO-CONCEPTO PIC X(4).
+               05 CG-CENTRO-COSTO PIC 9(8).
+               05 CG-TIPO-COBRO PIC X.
+               05 CG-VALOR PIC 9(2).
+               05 WS-IDENTIFICADOR PIC X(30).
+
+    
+       WORKING-STORAGE SECTION.
+
+           EXEC SQL INCLUDE SQLCA END-EXEC.
+
+           EXEC SQL INCLUDE CPY-CB-TB-CCO END-EXEC.
+
+       *>HV
+       01 TB-ESTUDIANTES.
+           05 HV-ES-FECHA-INGRESO PIC 9(8).
+           05 HV-ES-ESTADO PIC X.
+           05 HV-ES-FK-FACULTAD PIC X(5).
+
+       01 TB-FACULTADES.
+           05 HV-FC-ESTADO PIC X.
+
+       *> CALCULOS
+       01 RESULTADO-ANTIGUEDAD PIC 9(4) VALUE ZERO.
+
+       01 MOVCO-STATUS PIC XX.
+       01 COGE-STATUS PIC XX.
+
+       *> FLAG INDICADORES
+       01 MOVCO-FLAG PIC X VALUE 'N'.
+           88 MOVCO-FIN VALUE 'Y'.
+
+       *> VARIABLES PARA EL REPORTE
+       01 FECHA-GENERACION PIC XX/XX/XXXX.
+       01 FECHA-CONTABLE PIC XX/XX/XXXX.
+       01 TOTAL-LEIDOS PIC 9(3).
+       01 TOTAL-MOV-VALIDOS PIC 9(3).
+       01 TOTAL-MOV-RECHAZADOS PIC 9(3).
+
+       *> MOTIVOS FALLIDOS
+       01 MOVIMIENTO-ACTUAL PIC X VALUE 'Y'.
+           88 MOVIMIENTO-EXISTOSO VALUE 'N'.
+           88 MOVIMIENTO-RECHAZADO VALUE 'Y'.
+
+       01 FECHA-CONTABLE-INVALIDA PIC 9(3).
+       01 ESTUDIANTE-NO-EXISTE PIC 9(3).
+       01 ESTUDIANTE-INACTIVO PIC 9(3).
+       01 ESTUDIANTE-POCO-TIEMPO PIC 9(3).
+       01 FACULTAD-NO-EXISTE PIC 9(3).
+       01 FACULTAD-INACTIVA PIC 9(3).
+       01 CONCEPTOC-NO-EXISTE PIC 9(3).
+       01 CONCEPTOC-INACTIVO PIC 9(3).
+       01 VALOR-CARGO-ZERO PIC 9(3).
+       01 VALOR-CARGO-EXCESIVO PIC 9(3).
+
+
+       LINKAGE
+       01 IN-FECHA-CONTABLE PIC 9(8).
+           
+       PROCEDURE DIVISION USING 
+           IN-FECHA-CONTABLE
+           WS-CONCEPTOS-COBRO
+           CONCEPTOS-COBRO-COUNT.
+
+       100-MAIN.
+       *> ABRIR EL ARCHIVO
+       *> RECORRERLO
+       *> APLICAR VALIDACIONES
+           
+           OPEN INPUT MOVCO-FILE.
+           IF MOVCO-STATUS = '00'
+               DISPLAY 'ERROR AL CARGAR LOS ARCHIVOS CONSOLIDADOS'
+               STOP RUN.
+           END-IF.
+
+           PERFORM UNTIL MOVCO-FIN
+               READ MOVCO-FILE
+                   AT END
+                       SET MOVCO-FIN TO TRUE
+                   NOT AT END
+                       PERFORM 1000-VALIDAR-REGISTRO
+               END-READ.
+
+           END-PERFORM.
+
+
+
+       1000-VALIDAR-REGISTRO.
+           *> FECHA IN = FECHA CARGO
+           IF MO-FECHA-CARGO <> IN-FECHA-CONTABLE
+               SET MOVIMIENTO-RECHAZADO TO TRUE
+               ADD 1 TO FECHA-CONTABLE-INVALIDA
+               DISPLAY 'NO COINCIDE FECHA CARGO CON FECHA CONTABLE.'
+           END-IF.
+           *> CODIGO-ESTUDIANTE EXISTA EN TABLA Y ACTIVO, GET FECHA_INGR
+           IF MOVIMIENTO-EXISTOSO
+               MOVE SPACES TO HV-ESTADO
+               MOVE ZERO TO HV-ES-FECHA-INGRESO. *> OBTENER DESDE YA
+                   EXEC SQL
+                       SELECT 
+                           ESTADO INTO, FECHA_INGRESO, FACULTAD
+                           :HV-ES-ESTADO, :HV-ES-FECHA-INGRESO,
+                           :HV-ES-FK-FACULTAD
+                       FROM ESTUDIANTES
+                       WHERE CODIGO_ESTUDIANTE = :MO-CODIGO-ESTUDIANTE
+                   END-EXEC
+               IF SQLCODE NOT = 0
+                   SET MOV-RECHAZADO TO TRUE
+                   ADD 1 TO TOTAL-MOV-RECHAZADOS
+                   ADD 1 TO ESTUDIANTE-NO-EXISTE
+                   DISPLAY 'MOV RECHAZADO, ESTUDIANTE INEXISTENTE.'
+               ELSE
+                   IF HV-ES-ESTADO NOT = 'A'
+                       ADD 1 TO TOTAL-MOV-RECHAZADOS
+                       ADD 1 TO ESTUDIANTE-INACTIVO
+                       DISPLAY 'MOV RECHAZADO, ESTUDIANTE INACTIVO.'
+                   END-IF
+               END-IF
+           END-IF.
+           *> ESTUDIANTE NO MENOR DE 180 DIAS
+           IF MOVIMIENTO-EXISTOSO
+               *> DESPUES
+               COMPUTE RESULTADO-ANTIGUEDAD = 180
+               IF RESULTADO-ANTIGUEDAD < 180                   
+                   SET MOVIMIENTO-RECHAZADO TO TRUE
+                   ADD 1 TO TOTAL-MOV-RECHAZADOS
+                   ADD 1 TO TOTAL-MOV-RECHAZADOS
+                   DISPLAY 'MOV RECHAZADO, POCOS DIAS DE ANTIGUEDAD'
+               END-IF
+           END-IF.          
+
+           *> FACTULTAD EXISTE Y ACTIVO
+           IF MOVIMIENTO-EXISTOSO
+               EXEC SQL
+                   SELECT ESTADO INTO :HV-FC-ESTADO
+                   FROM FACULTADES
+                   WHERE CODIGO = :HV-ES-FK-FACULTAD
+               END-EXEC
+               IF SQLCODE NOT = 0
+                   SET MOVIMIENTO-RECHAZADO TO TRUE
+                   ADD 1 TO TOTAL-MOV-RECHAZADOS
+                   ADD 1 TO FACULTAD-NO-EXISTE
+                   DISPLAY 'MOV RECHAZADO, FACULTAD INEXISTENTE.'
+               ELSE
+                   IF HV-FC-ESTADO NOT = 'A'
+                     SET MOVIMIENTO-RECHAZADO TO TRUE
+                     ADD 1 TO TOTAL-MOV-RECHAZADOS
+                     ADD 1 TO FACULTAD-INACTIVA
+                     DISPLAY 'MOV RECHAZADO, FACULTAD INACTIVA.'
+                   END-IF.
+               END-IF.
+           END-IF.
+
+           *> CODIGO CONCECPTO DBEE EXISTIR EN MEMORIA Y ESTADO ACTUVO
+           *> VALOR CARGO > 0
+           *> VALOR CARGO <= 50% DEL VALOR MATRICULA ESTUDIANTE
+           GOBACK.

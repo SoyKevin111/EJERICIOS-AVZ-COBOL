@@ -21,11 +21,7 @@
 
            EXEC SQL INCLUDE SQLCA END-EXEC.
 
-       01 TB-CONCEPTOS-COBRO.
-          10 HV-CODIGO-CONCEPTO PIC X(4).
-          10 HV-DESCRIPCION      PIC X(30).
-          10 HV-TIPO-COBRO       PIC X(1).
-          10 HV-ESTADO           PIC X(1).
+           EXEC SQL INCLUDE CPY-CB-TB-CCO END-EXEC.
 
            EXEC SQL
               DECLARE CUR_CONCEPTOS 
@@ -40,34 +36,30 @@
            END-EXEC.
 
        LINKAGE SECTION.
-       01 IN-FECHA-CONTABLE PIC 9(8).
            EXEC SQL INCLUDE CPY-CB-CCO END-EXEC.
 
        PROCEDURE DIVISION USING
-           IN-FECHA-CONTABLE
            WS-CONCEPTOS-COBRO
            CONCEPTOS-COBRO-COUNT.
 
        100-MAIN.
-
-           EXEC SQL START TRANSACTION END-EXEC.
-
+           EXEC SQL START TRANSACTION END-EXEC. *> INICIO TRANSACCION
            EXEC SQL OPEN CUR_CONCEPTOS END-EXEC.
 
            PERFORM VARYING IDX-A FROM 1 BY 1 UNTIL SQLCODE NOT = 0
                EXEC SQL
                    FETCH CUR_CONCEPTOS
-                   INTO :HV-CODIGO-CONCEPTO,
-                        :HV-DESCRIPCION,
-                        :HV-TIPO-COBRO,
-                        :HV-ESTADO
+                   INTO :HV-CC-CODIGO-CONCEPTO,
+                        :HV-CC-DESCRIPCION,
+                        :HV-CC-TIPO-COBRO,
+                        :HV-CC-ESTADO
                END-EXEC
 
                IF SQLCODE = 0
-                   MOVE HV-CODIGO-CONCEPTO TO CC-CODIGO-CONCEPTO(IDX-A)
-                   MOVE HV-DESCRIPCION     TO CC-DESCRIPCION(IDX-A)
-                   MOVE HV-TIPO-COBRO      TO CC-TIPO-COBRO(IDX-A)
-                   MOVE HV-ESTADO          TO CC-ESTADO(IDX-A)
+                   MOVE HV-CC-CODIGO-CONCEPTO TO CC-CODIGO-CONCEPTO(IDX-A)
+                   MOVE HV-CC-DESCRIPCION     TO CC-DESCRIPCION(IDX-A)
+                   MOVE HV-CC-TIPO-COBRO      TO CC-TIPO-COBRO(IDX-A)
+                   MOVE HV-CC-ESTADO          TO CC-ESTADO(IDX-A)
                    ADD 1 TO CONCEPTOS-COBRO-COUNT
                END-IF
 
@@ -76,8 +68,7 @@
            IF SQLCODE = 0
                EXEC SQL CLOSE CUR_CONCEPTOS END-EXEC
            END-IF.
-           EXEC SQL COMMIT END-EXEC.
-
-           DISPLAY 'FECHA: ' IN-FECHA-CONTABLE.
+           EXEC SQL COMMIT END-EXEC. *> FIN TRANSACCION
+           
            DISPLAY 'CONCEPTOS CARGADOS: 'CONCEPTOS-COBRO-COUNT.
            GOBACK.
