@@ -13,16 +13,16 @@
        FILE-CONTROL.
            *> YA ORDENADO POR COD-EST, COD-CON, COD-CAR LOS .DAT
            SELECT CAAC-FILE ASSIGN TO './data/CARGOS_ACADEMICOS.DAT'
-           ORGANIZATION IS SEQUENTIAL
+           ORGANIZATION IS LINE SEQUENTIAL
            FILE STATUS CAAC-STATUS.
 
            SELECT CASE-FILE ASSIGN TO './data/CARGOS_SERVICIOS.DAT'
-           ORGANIZATION IS SEQUENTIAL
+           ORGANIZATION IS LINE SEQUENTIAL
            FILE STATUS CASE-STATUS.
 
            SELECT MOVCO-FILE
                ASSIGN TO './gen/MOVIMIENTOS-CONSOLIDADOS.DAT'
-           ORGANIZATION IS SEQUENTIAL
+           ORGANIZATION IS LINE SEQUENTIAL
            FILE STATUS MOVCO-STATUS.
 
            SELECT FILE-MERGE ASSIGN TO './gen/MERGE.TMP'.
@@ -39,9 +39,11 @@
 
            SD FILE-MERGE.
            01 REG-MERGE.
-               05 MG-CODIGO-ESTUDIANTE   PIC 9(10).
-               05 MG-CODIGO-CONCEPTO     PIC X(4).
-               05 MG-FECHA-CARGO         PIC 9(8).
+               05 MG-ID-MOVIMIENTO      PIC 9(10).
+               05 MG-FECHA-CARGO        PIC 9(8).
+               05 MG-CODIGO-ESTUDIANTE  PIC 9(10).
+               05 MG-CODIGO-CONCEPTO    PIC X(4).
+               05 MG-VALOR              PIC 9(2).
     
        WORKING-STORAGE SECTION.
        01 CAAC-STATUS PIC XX.
@@ -56,9 +58,9 @@
                ON ASCENDING KEY MG-FECHA-CARGO
                USING CAAC-FILE CASE-FILE
                GIVING MOVCO-FILE.
-           IF MOVCO-STATUS <> '00'
+           IF MOVCO-STATUS = '00'
                DISPLAY 'MOVIMIENTO CONSOLIDADO EXITOSO!'
            ELSE
-               DISPLAY 'ERROR!'
+               DISPLAY 'ERROR! MOVCO-STATUS: ' MOVCO-STATUS
            END-IF.
            GOBACK.
