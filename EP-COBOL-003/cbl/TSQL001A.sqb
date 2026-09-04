@@ -1,4 +1,4 @@
-﻿       IDENTIFICATION DIVISION.
+       IDENTIFICATION DIVISION.
 
        PROGRAM-ID. TSQL001A.
 
@@ -71,8 +71,11 @@
        01  WS-CONT-VALIDOS      PIC 9(08) VALUE ZEROES.
        01  WS-CONT-RECHAZADOS  PIC 9(08) VALUE ZEROES.
        01  WS-CONT-SIN-PARAM   PIC 9(08) VALUE ZEROES.
-       
+       01  WS-CUENTA-ANTERIOR PIC X(12).
        01  WS-FIN-MOVIMIENTOS PIC X(01) VALUE 'N'.
+
+
+       
 
        PROCEDURE DIVISION.
 
@@ -192,11 +195,38 @@
                        MOVE MOV-MOTIVO TO SRT-MOTIVO
                        MOVE MOV-VALOR TO SRT-VALOR
                        MOVE PAR-NOMBRE(IDX-PAR) TO SRT-NOMBRE-CTA
-        
+
                        RELEASE REG-SORT
                        ADD 1 TO WS-CONT-VALIDOS
                    END-IF
            END-SEARCH.
+
+       
+       3000-GENERAR-REPORTE.
+           SET WS-FIN-MOVIMIENTOS TO 'N'.
+           RETURN SORT-FILE AT END MOVE 'S' TO WS-FIN-MOVIMIENTOS.
+           MOVE SRT-CUENTA TO WS-CUENTA-ANTERIOR.
+           PERFORM UNTIL WS-FIN-MOVIMIENTOS = 'S'
+               IF SRT-CUENTA NOT = WS-CUENTA-ANTERIOR
+                   *> QUIEBRE DE CUENTA
+                   *> SUBTOTAL
+               END-IF
+               
+               PERFORM 000-MOSTRAR-DETALLES
+               
+               IF PAR-TIPO = 'PARTIDA'
+                   ADD MOV-VALOR TO WS-TOTAL-PARTIDAS
+               ELSE
+                   ADD MOV-VALOR TO WS-TOTAL-CONTRAPART
+               END-IF
+               
+               ADD SRT-VALOR TO WS-SUBTOT-CUENTA
+               
+               RETURN SORT-FILE AT END MOVE 'S' TO WS-FIN-MOVIMIENTOS.
+
+
+           END-PERFORM.
+           
        
 
 
