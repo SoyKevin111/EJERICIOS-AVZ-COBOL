@@ -1,0 +1,4 @@
+# DB1 - PostgreSQL DB gixsql/emptable Connection parameters
+DB1name=pgsql://localhost:5432/gixsql
+DB1role=yourname
+DB1pswd=yourpassword
