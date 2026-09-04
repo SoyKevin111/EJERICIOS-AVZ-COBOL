@@ -6,10 +6,10 @@
        ENVIRONMENT DIVISION.
        INPUT-OUTPUT SECTION.
        FILE-CONTROL.
-           SELECT REPORTE ASSIGN TO SYS001
+           SELECT REPORTE ASSIGN TO './REPORTE1'
                   ORGANIZATION IS SEQUENTIAL
                   FILE STATUS IS FS-REPORTE.
-           SELECT REPERROR ASSIGN TO SYS002
+           SELECT REPERROR ASSIGN TO '/REPORTE2'
                   ORGANIZATION IS SEQUENTIAL
                   FILE STATUS IS FS-ERROR.
            SELECT SORT-FILE ASSIGN TO SORTWK1.
@@ -17,11 +17,9 @@
        DATA DIVISION.
        FILE SECTION.
        FD  REPORTE
-           RECORD CONTAINS 133 CHARACTERS.
        01  REG-REPORTE PIC X(133).
 
        FD  REPERROR
-           RECORD CONTAINS 133 CHARACTERS.
        01  REG-ERROR PIC X(133).
 
        SD  SORT-FILE.
@@ -88,6 +86,7 @@
                INPUT PROCEDURE 1000-PROCESAR-MOVIMIENTOS
                OUTPUT PROCEDURE 3000-GENERAR-REPORTE
            CLOSE REPORTE REPERROR.
+           PERFORM 2000-MOSTRAR-CONTADORES.
            PERFORM 100-EXIT.
 
 
@@ -159,13 +158,33 @@
                 END-PERFORM.
             EXEC SQL CLOSE CUR-MOV END-EXEC.
 
+       2000-MOSTRAR-CONTADORES.
+           DISPLAY '========================================'.
+           DISPLAY '   DETALLES'.
+           DISPLAY '========================================'.
+           DISPLAY 'PARAMETROS CARGADOS   : ' WS-COUNT-PARAM.
+           DISPLAY 'MOVIMIENTOS LEIDOS    : ' WS-CONT-LEIDOS.
+           DISPLAY 'MOVIMIENTOS VALIDOS   : ' WS-CONT-VALIDOS.
+           DISPLAY 'MOVIMIENTOS RECHAZADOS: ' WS-CONT-RECHAZADOS.
+           DISPLAY 'MOVIMIENTOS SIN PARAM : ' WS-CONT-SIN-PARAM.
+           DISPLAY 'TOTAL PARTIDAS        : ' WS-TOTAL-PARTIDAS.
+           DISPLAY 'TOTAL CONTRAPARTIDAS  : ' WS-TOTAL-CONTRAPART.
+           DISPLAY '========================================'.
+
        1200-VALIDAR-Y-ENVIAR.
            IF MOV-VALOR <= 0
                ADD 1 TO WS-CONT-RECHAZADOS
                DISPLAY 'EL MOV VALOR ES <= 0'
                EXIT PARAGRAPH
            END-IF.
-    
+
+           *> VALIDAR OFICINA
+           IF MOV-OFICINA = SPACES OR ZEROES
+               ADD 1 TO WS-CONT-RECHAZADOS
+               DISPLAY 'OFICINA INVALIDA EN EL MOV'
+               EXIT PARAGRAPH
+           END-IF.
+
            *> BUSCAR PARTIDA Y CONTRA
            SET IDX-PAR TO 1.
            SEARCH TB-PARAMETROS
@@ -173,18 +192,24 @@
                    DISPLAY 'NO HAY PARTIDA O CONTRA PARA ESTE MOV'
                    ADD 1 TO WS-CONT-SIN-PARAM
                WHEN PAR-MOTIVO(IDX-PAR) = MOV-MOTIVO
-                   MOVE PAR-CUENTA(IDX-PAR) TO SRT-CUENTA
-                   MOVE PAR-OFICINA(IDX-PAR) TO SRT-OFICINA
-                   MOVE PAR-TIPO(IDX-PAR) TO SRT-TIPO-ENTRADA
-                   MOVE MOV-FECHA TO SRT-FECHA
-                   MOVE MOV-HORA TO SRT-HORA
-                   MOVE MOV-CLIENTE TO SRT-CLIENTE
-                   MOVE MOV-MOTIVO TO SRT-MOTIVO
-                   MOVE MOV-VALOR TO SRT-VALOR
-                   MOVE PAR-NOMBRE(IDX-PAR) TO SRT-NOMBRE-CTA
-    
-                   RELEASE REG-SORT
-                   ADD 1 TO WS-CONT-VALIDOS
+                   
+                   IF PAR-OFICINA(IDX-PAR) = SPACES OR ZEROES
+                       DISPLAY 'OFICINA DE AFECTACION NO DETERMINADA'
+                       ADD 1 TO WS-CONT-RECHAZADOS
+                   ELSE
+                       MOVE PAR-CUENTA(IDX-PAR) TO SRT-CUENTA
+                       MOVE PAR-OFICINA(IDX-PAR) TO SRT-OFICINA
+                       MOVE PAR-TIPO(IDX-PAR) TO SRT-TIPO-ENTRADA
+                       MOVE MOV-FECHA TO SRT-FECHA
+                       MOVE MOV-HORA TO SRT-HORA
+                       MOVE MOV-CLIENTE TO SRT-CLIENTE
+                       MOVE MOV-MOTIVO TO SRT-MOTIVO
+                       MOVE MOV-VALOR TO SRT-VALOR
+                       MOVE PAR-NOMBRE(IDX-PAR) TO SRT-NOMBRE-CTA
+        
+                       RELEASE REG-SORT
+                       ADD 1 TO WS-CONT-VALIDOS
+                   END-IF
            END-SEARCH.
 
     
