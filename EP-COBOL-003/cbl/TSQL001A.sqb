@@ -144,7 +144,6 @@
      
            *> MAPEA
             EXEC SQL OPEN CUR-MOV END-EXEC.
-                MOVE 'N' TO WS-FIN-MOVIMIENTOS.
                 PERFORM UNTIL SQLCODE NOT = 0
                      EXEC SQL FETCH CUR-MOV INTO 
                          :MOV-FECHA, :MOV-HORA, :MOV-CLIENTE, :MOV-MOTIVO,
