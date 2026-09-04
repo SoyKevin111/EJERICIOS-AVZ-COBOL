@@ -4,20 +4,90 @@
 
 
        ENVIRONMENT DIVISION.
-       CONFIGURATION SECTION.
-      * SOURCE-COMPUTER. IBM WITH DEBUGGING MODE.
        INPUT-OUTPUT SECTION.
        FILE-CONTROL.
+           SELECT REPORTE ASSIGN TO SYS001
+                  ORGANIZATION IS SEQUENTIAL
+                  FILE STATUS IS FS-REPORTE.
+           SELECT REPERROR ASSIGN TO SYS002
+                  ORGANIZATION IS SEQUENTIAL
+                  FILE STATUS IS FS-ERROR.
+           SELECT SORT-FILE ASSIGN TO SORTWK1.
+
        DATA DIVISION.
        FILE SECTION.
+       FD  REPORTE
+           RECORD CONTAINS 133 CHARACTERS.
+       01  REG-REPORTE PIC X(133).
+
+       FD  REPERROR
+           RECORD CONTAINS 133 CHARACTERS.
+       01  REG-ERROR PIC X(133).
+
+       SD  SORT-FILE.
+       01  REG-SORT.
+           05 SRT-CUENTA       PIC X(12).
+           05 SRT-OFICINA      PIC X(03).
+           05 SRT-TIPO-ENTRADA PIC X(15).
+           05 SRT-FECHA        PIC X(10).
+           05 SRT-HORA         PIC X(08).
+           05 SRT-CLIENTE      PIC X(06).
+           05 SRT-MOTIVO       PIC X(02).
+           05 SRT-VALOR        PIC 9(13)V99.
+           05 SRT-NOMBRE-CTA   PIC X(30).
 
        WORKING-STORAGE SECTION.
+       EXEC SQL BEGIN DECLARE SECTION END-EXEC.
+      *PARAMETRIZACION
+       01  HV-COD-MOTIVO      PIC X(02).
+       01  HV-TIPO-ENTRADA    PIC X(15).
+       01  HV-CUENTA-CONTABLE PIC X(12).
+       01  HV-ID-CUENTA       PIC X(04).
+       01  HV-NOMBRE-CUENTA   PIC X(30).
+       01  HV-OFICINA-AFECT   PIC X(03).
+       
+      * MOVIMIENTOS
+       01  MOV-FECHA   PIC X(10).
+       01  MOV-HORA    PIC X(08).
+       01  MOV-CLIENTE PIC X(06).
+       01  MOV-MOTIVO  PIC X(02).
+       01  MOV-VALOR   PIC 9(13)V99.
+       01  MOV-OFICINA PIC X(03).
+       EXEC SQL END DECLARE SECTION END-EXEC.
+
+      * PARAM EN MEMORIA
+       01  TABLA-PARAMETROS.
+           05 TB-PARAMETROS OCCURS 100 TIMES INDEXED BY IDX-PAR.
+              10 PAR-MOTIVO  PIC X(02).
+              10 PAR-TIPO    PIC X(15).
+              10 PAR-CUENTA  PIC X(12).
+              10 PAR-NOMBRE  PIC X(30).
+              10 PAR-OFICINA PIC X(03).
+       01  WS-COUNT-PARAM      PIC 9(03) VALUE ZEROES.
+
+      * CONTADORES
+       01  WS-TOTAL-PARTIDAS   PIC 9(15)V99 VALUE ZEROES.
+       01  WS-TOTAL-CONTRAPART PIC 9(15)V99 VALUE ZEROES.
+       01  WS-SUBTOT-CUENTA    PIC 9(15)V99 VALUE ZEROES.
+       01  WS-CONT-LEIDOS      PIC 9(08) VALUE ZEROES.
+       01  WS-CONT-VALIDOS      PIC 9(08) VALUE ZEROES.
+       01  WS-CONT-RECHAZADOS  PIC 9(08) VALUE ZEROES.
+       01  WS-CONT-SIN-PARAM   PIC 9(08) VALUE ZEROES.
+       
+       01  WS-FIN-MOVIMIENTOS PIC X(01) VALUE 'N'.
 
        PROCEDURE DIVISION.
 
        100-MAIN.
            PERFORM 000-CONNECT.
-           DISPLAY 'HELLO WORLD'
+           OPEN OUTPUT REPORTE REPERROR.
+           PERFORM 500-CARGAR-PARAMETROS.
+           SORT SORT-FILE
+               ON ASCENDING KEY SRT-CUENTA
+               ON ASCENDING KEY SRT-OFICINA
+               INPUT PROCEDURE 1000-PROCESAR-MOVIMIENTOS
+               OUTPUT PROCEDURE 3000-GENERAR-REPORTE
+           CLOSE REPORTE REPERROR.
            PERFORM 100-EXIT.
 
 
@@ -36,3 +106,85 @@
        100-EXIT.
            EXEC SQL CONNECT RESET END-EXEC.
            STOP RUN.
+
+       
+       500-CARGAR-PARAMETROS.
+           EXEC SQL DECLARE CUR-PARAM CURSOR FOR
+               SELECT COD_MOTIVO, TIPO_ENTRADA, CUENTA_CONTABLE,
+                       NOMBRE_CUENTA, OFICINA_AFECTACION
+               FROM PARAMETROS
+           END-EXEC.
+
+           EXEC SQL OPEN CUR-PARAM END-EXEC.
+           PERFORM UNTIL SQLCODE NOT = 0
+               EXEC SQL FETCH INTO
+                   :DB-COD-MOTIVO, :DB-TIPO-ENTRADA, :DB-CUENTA-CONTABLE,
+                   :DB-NOMBRE-CUENTA, :DB-OFICINA-AFECT
+               END-EXEC
+
+               IF SQLCODE = 0
+                   ADD 1 TO WS-COUNT-PARAM
+                   MOVE HV-COD-MOTIVO TO PAR-MOTIVO(WS-COUNT-PARAM)
+                   MOVE HV-TIPO-ENTRADA TO PAR-TIPO(WS-COUNT-PARAM)
+                   MOVE HV-CUENTA-CONTABLE TO PAR-CUENTA(WS-COUNT-PARAM)
+                   MOVE HV-NOMBRE-CUENTA TO PAR-NOMBRE(WS-COUNT-PARAM)
+                   MOVE HV-OFICINA-AFECT TO PAR-OFICINA(WS-COUNT-PARAM
+               END-IF.
+           END-PERFORM.
+           EXEC SQL CLOSE CUR-PARAM END-EXEC.
+
+
+       1000-PROCESAR-MOVIMIENTOS.
+           *> CURSOR
+            EXEC SQL DECLARA CUR-MOV CUROSR FOR
+                SELECT
+                    SELECT FECHA_MOV, HORA_MOV, COD_CLIENTE, COD_MOTIVO,
+                            VALOR, OFICINA
+                FROM MOVIMIENTOS
+            END-EXEC.
+     
+           *> MAPEA
+            EXEC SQL OPEN CUR-MOV END-EXEC.
+                MOVE 'N' TO WS-FIN-MOVIMIENTOS.
+                PERFORM UNTIL SQLCODE NOT = 0
+                     EXEC SQL FETCH CUR-MOV INTO 
+                         :MOV-FECHA, :MOV-HORA, :MOV-CLIENTE, :MOV-MOTIVO,
+                         :MOV-VALOR, :MOV-OFICINA
+                     END-EXEC
+                           
+                     IF SQLCODE = 0
+                         ADD 1 TO WS-CONT-LEIDOS
+                         PERFORM 1200-VALIDAR-Y-ENVIAR
+                     END-IF
+                END-PERFORM.
+            EXEC SQL CLOSE CUR-MOV END-EXEC.
+
+       1200-VALIDAR-Y-ENVIAR.
+           IF MOV-VALOR <= 0
+               ADD 1 TO WS-CONT-RECHAZADOS
+               DISPLAY 'EL MOV VALOR ES <= 0'
+               EXIT PARAGRAPH
+           END-IF.
+    
+           *> BUSCAR PARTIDA Y CONTRA
+           SET IDX-PAR TO 1.
+           SEARCH TB-PARAMETROS
+               AT END
+                   DISPLAY 'NO HAY PARTIDA O CONTRA PARA ESTE MOV'
+                   ADD 1 TO WS-CONT-SIN-PARAM
+               WHEN PAR-MOTIVO(IDX-PAR) = MOV-MOTIVO
+                   MOVE PAR-CUENTA(IDX-PAR) TO SRT-CUENTA
+                   MOVE PAR-OFICINA(IDX-PAR) TO SRT-OFICINA
+                   MOVE PAR-TIPO(IDX-PAR) TO SRT-TIPO-ENTRADA
+                   MOVE MOV-FECHA TO SRT-FECHA
+                   MOVE MOV-HORA TO SRT-HORA
+                   MOVE MOV-CLIENTE TO SRT-CLIENTE
+                   MOVE MOV-MOTIVO TO SRT-MOTIVO
+                   MOVE MOV-VALOR TO SRT-VALOR
+                   MOVE PAR-NOMBRE(IDX-PAR) TO SRT-NOMBRE-CTA
+    
+                   RELEASE REG-SORT
+                   ADD 1 TO WS-CONT-VALIDOS
+           END-SEARCH.
+
+    
