@@ -83,8 +83,8 @@
            SORT SORT-FILE
                ON ASCENDING KEY SRT-CUENTA
                ON ASCENDING KEY SRT-OFICINA
-               INPUT PROCEDURE 1000-PROCESAR-MOVIMIENTOS
-               OUTPUT PROCEDURE 3000-GENERAR-REPORTE
+               INPUT PROCEDURE 1000-PROCESAR-MOVIMIENTOS *> RELEASE
+               OUTPUT PROCEDURE 3000-GENERAR-REPORTE *> RETURN
            CLOSE REPORTE REPERROR.
            PERFORM 2000-MOSTRAR-CONTADORES.
            PERFORM 100-EXIT.
@@ -158,19 +158,6 @@
                 END-PERFORM.
             EXEC SQL CLOSE CUR-MOV END-EXEC.
 
-       2000-MOSTRAR-CONTADORES.
-           DISPLAY '========================================'.
-           DISPLAY '   DETALLES'.
-           DISPLAY '========================================'.
-           DISPLAY 'PARAMETROS CARGADOS   : ' WS-COUNT-PARAM.
-           DISPLAY 'MOVIMIENTOS LEIDOS    : ' WS-CONT-LEIDOS.
-           DISPLAY 'MOVIMIENTOS VALIDOS   : ' WS-CONT-VALIDOS.
-           DISPLAY 'MOVIMIENTOS RECHAZADOS: ' WS-CONT-RECHAZADOS.
-           DISPLAY 'MOVIMIENTOS SIN PARAM : ' WS-CONT-SIN-PARAM.
-           DISPLAY 'TOTAL PARTIDAS        : ' WS-TOTAL-PARTIDAS.
-           DISPLAY 'TOTAL CONTRAPARTIDAS  : ' WS-TOTAL-CONTRAPART.
-           DISPLAY '========================================'.
-
        1200-VALIDAR-Y-ENVIAR.
            IF MOV-VALOR <= 0
                ADD 1 TO WS-CONT-RECHAZADOS
@@ -211,5 +198,19 @@
                        ADD 1 TO WS-CONT-VALIDOS
                    END-IF
            END-SEARCH.
+       
 
+
+       2000-MOSTRAR-CONTADORES.
+           DISPLAY '========================================'.
+           DISPLAY '               DETALLES'.
+           DISPLAY '========================================'.
+           DISPLAY 'PARAMETROS CARGADOS   : ' WS-COUNT-PARAM.
+           DISPLAY 'MOVIMIENTOS LEIDOS    : ' WS-CONT-LEIDOS.
+           DISPLAY 'MOVIMIENTOS VALIDOS   : ' WS-CONT-VALIDOS.
+           DISPLAY 'MOVIMIENTOS RECHAZADOS: ' WS-CONT-RECHAZADOS.
+           DISPLAY 'MOVIMIENTOS SIN PARAM : ' WS-CONT-SIN-PARAM.
+           DISPLAY 'TOTAL PARTIDAS        : ' WS-TOTAL-PARTIDAS.
+           DISPLAY 'TOTAL CONTRAPARTIDAS  : ' WS-TOTAL-CONTRAPART.
+           DISPLAY '========================================'.
     
