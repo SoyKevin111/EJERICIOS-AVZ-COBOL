@@ -1,0 +1,210 @@
+       IDENTIFICATION DIVISION.
+
+       PROGRAM-ID. TSQL001AD.
+      *----------------------------------------------------------------*
+      * SUBPROGRAMA DE BASE DE DATOS  ---  UNICO FUENTE QUE PASA POR   *
+      * EL PRECOMPILADOR SQL (gixpp).                                 *
+      *                                                              *
+      * Aisla TODO el EXEC SQL.  No conoce SD / SORT / RELEASE /      *
+      * RETURN, asi el analizador lexico de gixpp nunca los ve.      *
+      *                                                              *
+      * Puntos de entrada (ENTRY) que consume el principal:          *
+      *   DB-CONECTAR          USING sqlcode                         *
+      *   DB-DESCONECTAR                                             *
+      *   DB-CARGAR-PARAMETROS USING tabla, contador, sqlcode        *
+      *   DB-FETCH-MOV         USING mov-reg, sqlcode  (1 x llamada) *
+      *                                                              *
+      * Convencion de nombres de las host variables:                 *
+      *   HV- + tabla (PAR / MOV) + nombre de la columna.            *
+      *   Ej: HV-PAR-OFICINA-AFECTACION  <- PARAMETROS.OFICINA_AFECTACION
+      *       HV-MOV-FECHA-MOV           <- MOVIMIENTOS.FECHA_MOV     *
+      *                                                              *
+      * Nota PostgreSQL: con autocommit ON un DECLARE normal falla   *
+      * ("DECLARE CURSOR can only be used in transaction blocks").   *
+      * Se usan cursores CURSOR WITH HOLD: se pueden abrir sin un    *
+      * bloque de transaccion explicito y sobreviven al commit       *
+      * implicito de cada FETCH.  Se cierran de forma explicita.     *
+      *----------------------------------------------------------------*
+
+       ENVIRONMENT DIVISION.
+       INPUT-OUTPUT SECTION.
+       FILE-CONTROL.
+
+       DATA DIVISION.
+       FILE SECTION.
+
+       WORKING-STORAGE SECTION.
+
+           EXEC SQL INCLUDE SQLCA END-EXEC.
+
+           EXEC SQL BEGIN DECLARE SECTION END-EXEC.
+      * CONEXION
+       01  HV-DATASRC                 PIC X(64).
+       01  HV-DBUSR                   PIC X(32).
+       01  HV-DBPWD                   PIC X(32).
+      * TABLA_PARAMETROS  (host var = HV-PAR- + columna)
+       01  HV-PAR-COD-MOTIVO          PIC X(02).
+       01  HV-PAR-TIPO-ENTRADA        PIC X(15).
+       01  HV-PAR-CUENTA-CONTABLE     PIC X(12).
+       01  HV-PAR-NOMBRE-CUENTA       PIC X(30).
+       01  HV-PAR-OFICINA-AFECTACION  PIC X(03).
+      * TABLA_MOVIMIENTOS  (host var = HV-MOV- + columna)
+       01  HV-MOV-FECHA-MOV           PIC X(10).
+       01  HV-MOV-HORA-MOV            PIC X(08).
+       01  HV-MOV-COD-CLIENTE         PIC X(06).
+       01  HV-MOV-COD-MOTIVO          PIC X(02).
+       01  HV-MOV-VALOR               PIC S9(13)V99.
+       01  HV-MOV-OFICINA             PIC X(03).
+           EXEC SQL END DECLARE SECTION END-EXEC.
+
+           EXEC SQL DECLARE CUR_PARAM CURSOR WITH HOLD FOR
+               SELECT COD_MOTIVO, TIPO_ENTRADA, CUENTA_CONTABLE,
+                      NOMBRE_CUENTA, OFICINA_AFECTACION
+               FROM TABLA_PARAMETROS
+               ORDER BY CUENTA_CONTABLE
+           END-EXEC.
+
+           EXEC SQL DECLARE CUR_MOV CURSOR WITH HOLD FOR
+               SELECT FECHA_MOV, HORA_MOV, COD_CLIENTE, COD_MOTIVO,
+                      VALOR, OFICINA
+               FROM TABLA_MOVIMIENTOS
+           END-EXEC.
+
+      * ESTADO PROPIO DEL SUBPROGRAMA (persiste entre CALLs)
+       01  WS-MOV-ABIERTO     PIC X(01) VALUE 'N'.
+       01  WS-COD-LOOP        PIC S9(09) COMP-5 VALUE ZEROES.
+
+       LINKAGE SECTION.
+       01  LK-SQLCODE         PIC S9(09) COMP-5.
+
+           COPY CPY-PARAM.
+
+           COPY CPY-MOV.
+
+       PROCEDURE DIVISION.
+
+      *================================================================*
+       DB-CONECTAR-E.
+           ENTRY 'DB-CONECTAR' USING LK-SQLCODE.
+           ACCEPT HV-DATASRC FROM ENVIRONMENT 'DB1SRC'.
+           ACCEPT HV-DBUSR   FROM ENVIRONMENT 'DB1USER'.
+           ACCEPT HV-DBPWD   FROM ENVIRONMENT 'DB1PASS'.
+           EXEC SQL
+               CONNECT TO :HV-DATASRC USER :HV-DBUSR USING :HV-DBPWD
+           END-EXEC.
+           MOVE SQLCODE TO LK-SQLCODE.
+           IF SQLCODE = 0
+               DISPLAY 'CONECTADO A BD'
+           ELSE
+               DISPLAY 'FALLO CONNECT. SQLCODE=' SQLCODE
+                       ' SQLERRMC=' SQLERRMC
+           END-IF.
+           GOBACK.
+
+      *================================================================*
+       DB-DESCONECTAR-E.
+           ENTRY 'DB-DESCONECTAR'.
+           EXEC SQL CONNECT RESET END-EXEC.
+           GOBACK.
+
+      *================================================================*
+      * Carga completa de TABLA_PARAMETROS en la tabla en memoria.     *
+      * Pocas filas, acotada a 100 -> no desborda memoria.            *
+      *================================================================*
+       DB-CARGAR-PARAMETROS-E.
+           ENTRY 'DB-CARGAR-PARAMETROS'
+               USING TB-PARAMETROS WS-COUNT-PARAM LK-SQLCODE.
+
+           MOVE ZEROES TO WS-COUNT-PARAM.
+           MOVE ZEROES TO SQLCODE.
+
+           EXEC SQL OPEN CUR_PARAM END-EXEC.
+           IF SQLCODE < 0
+               MOVE SQLCODE TO LK-SQLCODE
+               GOBACK
+           END-IF.
+
+           PERFORM UNTIL SQLCODE NOT = 0
+               EXEC SQL
+                   FETCH CUR_PARAM INTO
+                       :HV-PAR-COD-MOTIVO,
+                       :HV-PAR-TIPO-ENTRADA,
+                       :HV-PAR-CUENTA-CONTABLE,
+                       :HV-PAR-NOMBRE-CUENTA,
+                       :HV-PAR-OFICINA-AFECTACION
+               END-EXEC
+
+               IF SQLCODE = 0 AND WS-COUNT-PARAM < 100
+                   ADD 1 TO WS-COUNT-PARAM
+                   MOVE HV-PAR-COD-MOTIVO
+                       TO PAR-COD-MOTIVO         (WS-COUNT-PARAM)
+                   MOVE HV-PAR-TIPO-ENTRADA
+                       TO PAR-TIPO-ENTRADA       (WS-COUNT-PARAM)
+                   MOVE HV-PAR-CUENTA-CONTABLE
+                       TO PAR-CUENTA-CONTABLE    (WS-COUNT-PARAM)
+                   MOVE HV-PAR-NOMBRE-CUENTA
+                       TO PAR-NOMBRE-CUENTA      (WS-COUNT-PARAM)
+                   MOVE HV-PAR-OFICINA-AFECTACION
+                       TO PAR-OFICINA-AFECTACION (WS-COUNT-PARAM)
+               END-IF
+           END-PERFORM.
+
+           MOVE SQLCODE TO WS-COD-LOOP.
+
+           EXEC SQL CLOSE CUR_PARAM END-EXEC.
+
+           IF WS-COD-LOOP < 0
+               MOVE WS-COD-LOOP TO LK-SQLCODE
+           ELSE
+               MOVE 0 TO LK-SQLCODE
+           END-IF.
+
+           DISPLAY 'PARAMETROS LEIDOS EN SUBPROGRAMA: ' WS-COUNT-PARAM.
+           GOBACK.
+
+      *================================================================*
+      * Devuelve UN movimiento por llamada.                           *
+      *   LK-SQLCODE = 0    -> registro entregado en MOV-REG          *
+      *   LK-SQLCODE = 100  -> no hay mas registros (cursor cerrado)  *
+      *   LK-SQLCODE < 0    -> error                                  *
+      * En la primera llamada abre el cursor; al llegar al fin (o si  *
+      * hay error) lo cierra.                                         *
+      *================================================================*
+       DB-FETCH-MOV-E.
+           ENTRY 'DB-FETCH-MOV' USING MOV-REG LK-SQLCODE.
+
+           IF WS-MOV-ABIERTO = 'N'
+               MOVE ZEROES TO SQLCODE
+               EXEC SQL OPEN CUR_MOV END-EXEC
+               IF SQLCODE NOT = 0
+                   MOVE SQLCODE TO LK-SQLCODE
+                   GOBACK
+               END-IF
+               MOVE 'S' TO WS-MOV-ABIERTO
+           END-IF.
+
+           EXEC SQL
+               FETCH CUR_MOV INTO
+                   :HV-MOV-FECHA-MOV,
+                   :HV-MOV-HORA-MOV,
+                   :HV-MOV-COD-CLIENTE,
+                   :HV-MOV-COD-MOTIVO,
+                   :HV-MOV-VALOR,
+                   :HV-MOV-OFICINA
+           END-EXEC.
+
+           MOVE SQLCODE TO LK-SQLCODE.
+
+           IF SQLCODE = 0
+               MOVE HV-MOV-FECHA-MOV   TO MOV-FECHA-MOV
+               MOVE HV-MOV-HORA-MOV    TO MOV-HORA-MOV
+               MOVE HV-MOV-COD-CLIENTE TO MOV-COD-CLIENTE
+               MOVE HV-MOV-COD-MOTIVO  TO MOV-COD-MOTIVO
+               MOVE HV-MOV-VALOR       TO MOV-VALOR
+               MOVE HV-MOV-OFICINA     TO MOV-OFICINA
+           ELSE
+               EXEC SQL CLOSE CUR_MOV END-EXEC
+               MOVE 'N' TO WS-MOV-ABIERTO
+           END-IF.
+
+           GOBACK.
