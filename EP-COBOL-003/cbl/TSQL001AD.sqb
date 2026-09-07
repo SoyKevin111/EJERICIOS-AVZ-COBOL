@@ -59,7 +59,7 @@
 
        PROCEDURE DIVISION.
 
-      *================================================================*
+      
        DB-CONECTAR-E.
            ENTRY 'DB-CONECTAR' USING LK-SQLCODE.
            ACCEPT HV-DATASRC FROM ENVIRONMENT 'DB1SRC'.
@@ -77,15 +77,13 @@
            END-IF.
            GOBACK.
 
-      *================================================================*
+      
        DB-DESCONECTAR-E.
            ENTRY 'DB-DESCONECTAR'.
            EXEC SQL CONNECT RESET END-EXEC.
            GOBACK.
 
-      *================================================================*
-      * Carga TABLA_PARAMETROS completa en la tabla en memoria (<=100).*
-      *================================================================*
+ 
        DB-CARGAR-PARAMETROS-E.
            ENTRY 'DB-CARGAR-PARAMETROS'
                USING TB-PARAMETROS WS-COUNT-PARAM LK-SQLCODE.
@@ -137,11 +135,7 @@
            DISPLAY 'PARAMETROS LEIDOS EN SUBPROGRAMA: ' WS-COUNT-PARAM.
            GOBACK.
 
-      *================================================================*
-      * Devuelve UN movimiento por llamada. Abre el cursor en la      *
-      * primera llamada y lo cierra al fin o ante error.              *
-      *   LK-SQLCODE = 0 -> registro en MOV-REG;  100 -> fin;  <0 err *
-      *================================================================*
+      * DEVUELVE UN MOV POR LLAMADA
        DB-FETCH-MOV-E.
            ENTRY 'DB-FETCH-MOV' USING MOV-REG LK-SQLCODE.
 
