@@ -326,11 +326,9 @@
       *    movimiento correcto, se genera 2 lineas contables
            MOVE WS-IDX-PARTIDA TO IDX-PARAM.
            PERFORM 1250-EMITIR-ASIENTO.
-           ADD MOV-VALOR TO WS-TOTAL-PARTIDAS.
 
            MOVE WS-IDX-CONTRA TO IDX-PARAM.
            PERFORM 1250-EMITIR-ASIENTO.
-           ADD MOV-VALOR TO WS-TOTAL-CONTRAPART.
 
            ADD 1 TO WS-CNT-VALIDO.
 
@@ -461,6 +459,13 @@
            WRITE REG-REPORTE.
            ADD 1 TO WS-LINEAS.
            ADD SRT-VALOR TO WS-SUBTOT-CUENTA.
+
+           *> ADD AL TOTAL GENERAL
+           IF SRT-TIPO-ENTRADA = 'PARTIDA'
+               ADD SRT-VALOR TO WS-TOTAL-PARTIDAS
+           ELSE
+               ADD SRT-VALOR TO WS-TOTAL-CONTRAPART
+           END-IF.
 
       * QUIEBRE DE CUENTA Y TOTAL DE CUENTA
        3400-CERRAR-CUENTA.
