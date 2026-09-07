@@ -369,6 +369,7 @@
            MOVE ZEROES TO WS-COUNT-RESUMEN.
            MOVE 'N' TO WS-FIN-MOVIMIENTOS.
 
+           *> PRIMER REGISTRO DEL INPUT
            RETURN SORT-FILE AT END
                MOVE 'S' TO WS-FIN-MOVIMIENTOS
            END-RETURN.
@@ -381,23 +382,29 @@
                PERFORM 3700-TOTAL-GENERAL
                GO TO 3000-FIN
            END-IF.
-
+           
+           *> PRIMER REGISTRO DEL INPUT
            PERFORM 3950-FMT-FECHA-MOV.
            PERFORM 3100-ENCABEZADO.
+
            MOVE SRT-CUENTA TO WS-CUENTA-ANTERIOR.
            PERFORM 3200-ABRIR-CUENTA.
-
            PERFORM UNTIL WS-FIN-MOVIMIENTOS = 'S'
                *> validar quiebre de cuenta
                IF SRT-CUENTA NOT = WS-CUENTA-ANTERIOR
+
+                   *> VALIDA PAGINA, ESCRIBE TOTAL CUENTA
                    PERFORM 3400-CERRAR-CUENTA
                    MOVE SRT-CUENTA TO WS-CUENTA-ANTERIOR
+
+                   *> ABRE CUENTA, IMPRIME ENCABEZADO
                    PERFORM 3200-ABRIR-CUENTA
                END-IF
                *> continua con detalle y acumulador
                PERFORM 3300-ESCRIBIR-DETALLE
                PERFORM 3500-ACUMULAR-RESUMEN
 
+               *> SIGUIENTE REGISTRO DEL INPUT
                RETURN SORT-FILE AT END
                    MOVE 'S' TO WS-FIN-MOVIMIENTOS
                END-RETURN
@@ -411,17 +418,21 @@
       * REPORTE1, encabezado*
        3100-ENCABEZADO.
            ADD 1 TO WS-PAGINA.
+           
            MOVE WS-PAGINA TO WS-PAGINA-PRINT.
            MOVE 'CUADRE CONTABLE - MOVIMIENTOS' TO REG-REPORTE.
            WRITE REG-REPORTE.
+
            MOVE SPACES TO REG-REPORTE.
            STRING 'PROCESO: TSQL001A   FECHA PROC: ' WS-FECHA-PROC
                   '   FECHA MOV: ' WS-FECHA-MOV-PRINT
                   '   PAG: ' WS-PAGINA-PRINT
                DELIMITED BY SIZE INTO REG-REPORTE.
            WRITE REG-REPORTE.
+
            MOVE WS-SEPARADOR TO REG-REPORTE.
            WRITE REG-REPORTE.
+
            MOVE 3 TO WS-LINEAS.
 
        3150-VERIF-PAGINA.
