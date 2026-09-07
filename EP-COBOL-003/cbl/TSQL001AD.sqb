@@ -1,30 +1,6 @@
        IDENTIFICATION DIVISION.
 
        PROGRAM-ID. TSQL001AD.
-      *----------------------------------------------------------------*
-      * SUBPROGRAMA DE BASE DE DATOS  ---  UNICO FUENTE QUE PASA POR   *
-      * EL PRECOMPILADOR SQL (gixpp).                                 *
-      *                                                              *
-      * Aisla TODO el EXEC SQL.  No conoce SD / SORT / RELEASE /      *
-      * RETURN, asi el analizador lexico de gixpp nunca los ve.      *
-      *                                                              *
-      * Puntos de entrada (ENTRY) que consume el principal:          *
-      *   DB-CONECTAR          USING sqlcode                         *
-      *   DB-DESCONECTAR                                             *
-      *   DB-CARGAR-PARAMETROS USING tabla, contador, sqlcode        *
-      *   DB-FETCH-MOV         USING mov-reg, sqlcode  (1 x llamada) *
-      *                                                              *
-      * Convencion de nombres de las host variables:                 *
-      *   HV- + tabla (PAR / MOV) + nombre de la columna.            *
-      *   Ej: HV-PAR-OFICINA-AFECTACION  <- PARAMETROS.OFICINA_AFECTACION
-      *       HV-MOV-FECHA-MOV           <- MOVIMIENTOS.FECHA_MOV     *
-      *                                                              *
-      * Nota PostgreSQL: con autocommit ON un DECLARE normal falla   *
-      * ("DECLARE CURSOR can only be used in transaction blocks").   *
-      * Se usan cursores CURSOR WITH HOLD: se pueden abrir sin un    *
-      * bloque de transaccion explicito y sobreviven al commit       *
-      * implicito de cada FETCH.  Se cierran de forma explicita.     *
-      *----------------------------------------------------------------*
 
        ENVIRONMENT DIVISION.
        INPUT-OUTPUT SECTION.
@@ -108,8 +84,7 @@
            GOBACK.
 
       *================================================================*
-      * Carga completa de TABLA_PARAMETROS en la tabla en memoria.     *
-      * Pocas filas, acotada a 100 -> no desborda memoria.            *
+      * Carga TABLA_PARAMETROS completa en la tabla en memoria (<=100).*
       *================================================================*
        DB-CARGAR-PARAMETROS-E.
            ENTRY 'DB-CARGAR-PARAMETROS'
@@ -163,12 +138,9 @@
            GOBACK.
 
       *================================================================*
-      * Devuelve UN movimiento por llamada.                           *
-      *   LK-SQLCODE = 0    -> registro entregado en MOV-REG          *
-      *   LK-SQLCODE = 100  -> no hay mas registros (cursor cerrado)  *
-      *   LK-SQLCODE < 0    -> error                                  *
-      * En la primera llamada abre el cursor; al llegar al fin (o si  *
-      * hay error) lo cierra.                                         *
+      * Devuelve UN movimiento por llamada. Abre el cursor en la      *
+      * primera llamada y lo cierra al fin o ante error.              *
+      *   LK-SQLCODE = 0 -> registro en MOV-REG;  100 -> fin;  <0 err *
       *================================================================*
        DB-FETCH-MOV-E.
            ENTRY 'DB-FETCH-MOV' USING MOV-REG LK-SQLCODE.

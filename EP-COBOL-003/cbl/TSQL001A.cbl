@@ -1,20 +1,8 @@
        IDENTIFICATION DIVISION.
-
        PROGRAM-ID. TSQL001A.
-      *----------------------------------------------------------------*
-      * PROGRAMA PRINCIPAL  ---  COBOL PURO                            *
-      *                                                              *
-      * NO pasa por el precompilador SQL (gixpp).  Conserva intacto   *
-      * el clasificador interno de COBOL:                             *
-      *     SD SORT-FILE / SORT ... INPUT PROCEDURE OUTPUT PROCEDURE  *
-      *     RELEASE REG-SORT / RETURN SORT-FILE                       *
-      * Toda la Base de Datos vive en el subprograma TSQL001AD (.sqb),*
-      * que entrega los registros de a uno por CALL.  Asi el          *
-      * clasificador procesa registro por registro sin cargar todos   *
-      * los movimientos en memoria.                                   *
-      *----------------------------------------------------------------*
 
        ENVIRONMENT DIVISION.
+
        INPUT-OUTPUT SECTION.
        FILE-CONTROL.
            SELECT REPORTE  ASSIGN TO './REPORTE1'
@@ -47,45 +35,37 @@
 
        WORKING-STORAGE SECTION.
 
-      * ESTADOS DE ARCHIVO
        01  FS-REPORTE          PIC X(02) VALUE '00'.
        01  FS-ERROR            PIC X(02) VALUE '00'.
 
-      * REGISTRO DE MOVIMIENTO QUE DEVUELVE EL SUBPROGRAMA DE BD
+      * mov que llena el subprograma 1 x 1
            COPY CPY-MOV.
 
-      * TABLA DE PARAMETROS EN MEMORIA
+      * tabla parametros carga
            COPY CPY-PARAM.
 
-      * CODIGO DE RETORNO SQL DEVUELTO POR EL SUBPROGRAMA
        01  WS-SQLCODE          PIC S9(09) COMP-5 VALUE ZEROES.
 
-      * CONTADORES / ACUMULADORES DEL CUADRE
+      * Contadores y acumuladores
        01  WS-TOTAL-PARTIDAS   PIC S9(15)V99 VALUE ZEROES.
        01  WS-TOTAL-CONTRAPART PIC S9(15)V99 VALUE ZEROES.
        01  WS-DIFERENCIA       PIC S9(15)V99 VALUE ZEROES.
        01  WS-SUBTOT-CUENTA    PIC S9(15)V99 VALUE ZEROES.
-       01  WS-CONT-LEIDOS      PIC 9(08) VALUE ZEROES.
-       01  WS-CONT-VALIDOS     PIC 9(08) VALUE ZEROES.
-       01  WS-CONT-ASIENTOS    PIC 9(08) VALUE ZEROES.
-       01  WS-CONT-RECHAZADOS  PIC 9(08) VALUE ZEROES.
-       01  WS-CONT-SIN-PARAM   PIC 9(08) VALUE ZEROES.
        01  WS-ESTADO-CUADRE    PIC X(11) VALUE SPACES.
        01  WS-CUENTA-ANTERIOR  PIC X(12) VALUE SPACES.
        01  WS-FIN-MOVIMIENTOS  PIC X(01) VALUE 'N'.
 
-      * INDICES DE LA PARTIDA Y LA CONTRAPARTIDA DEL MOTIVO EN CURSO
-       01  WS-IDX-PARTIDA     PIC 9(03) VALUE ZEROES.
-       01  WS-IDX-CONTRA      PIC 9(03) VALUE ZEROES.
-       01  WS-SUB            PIC 9(03) VALUE ZEROES.
+      * Indice de la PARTIDA y de la CONTRAPARTIDA del motivo en curso
+       01  WS-IDX-PARTIDA      PIC 9(03) VALUE ZEROES.
+       01  WS-IDX-CONTRA       PIC 9(03) VALUE ZEROES.
+      * Indice del parametro que se esta contabilizando (par / contra)
+       01  IDX-PARAM          PIC 9(03) VALUE ZEROES.
 
-      * EDICION PARA EL CUADRE
-       01  WS-EDT-IMPORTE    PIC Z(14)9.99.
-       01  WS-EDT-DIFEREN    PIC -(14)9.99.
+       01  WS-DIFEREN-EDIT    PIC -(14)9.99.
 
-      * ---- LISTADO DE ERRORES / INCONSISTENCIAS  (REPORTE2) ---------
+      * REPORTE2
        01  WS-TIPO-ERROR      PIC X(28) VALUE SPACES.
-       01  WS-CAB-ERR.
+       01  WS-CAB-ERROR.
            05 FILLER  PIC X(01) VALUE SPACES.
            05 FILLER  PIC X(12) VALUE 'FECHA'.
            05 FILLER  PIC X(10) VALUE 'HORA'.
@@ -95,6 +75,8 @@
            05 FILLER  PIC X(14) VALUE '         VALOR'.
            05 FILLER  PIC X(02) VALUE SPACES.
            05 FILLER  PIC X(13) VALUE 'TIPO DE ERROR'.
+
+      * WORKING ERROR
        01  WS-LINEA-ERROR.
            05 FILLER            PIC X(01) VALUE SPACES.
            05 WE-FECHA          PIC X(10).
@@ -111,20 +93,28 @@
            05 FILLER            PIC X(02) VALUE SPACES.
            05 WE-TIPO-ERROR     PIC X(28).
 
-      * ---- REPORTE CONTABLE PAGINADO  (REPORTE1) -------------------
-       01  WS-SEP             PIC X(70) VALUE ALL '-'.
+      *--------------------------------------------------------------
+      * VARIABLES PARA ARMAR REPORTE1
+      * GUIA DE PREFIJOS / NOMBRES:
+      *   DET-      campos de la linea de DETALLE por movimiento
+      *   RES-      campos de un item del RESUMEN por oficina/cuenta
+      *   IDX-      indice para recorrer una tabla
+      *   WS-IMP-.. importe con formato de edicion para imprimir
+      *--------------------------------------------------------------
+       01  WS-SEPARADOR       PIC X(70) VALUE ALL '-'.
        01  WS-PAGINA         PIC 9(03) VALUE ZEROES.
        01  WS-PAGINA-ED      PIC ZZ9.
        01  WS-LINEAS         PIC 9(03) VALUE ZEROES.
        01  WS-MAX-LINEAS     PIC 9(03) VALUE 60.
        01  WS-FECHA-PROC     PIC X(10) VALUE SPACES.
        01  WS-FECHA-MOV-REP  PIC X(15) VALUE SPACES.
-       01  WS-CURR           PIC X(21).
+       01  WS-FECHA-SISTEMA  PIC X(21).
        01  WS-IMP-CTA        PIC Z(12)9.99.
        01  WS-IMP-PAR        PIC Z(12)9.99.
        01  WS-IMP-CON        PIC Z(12)9.99.
 
-       01  WS-CAB-DET.
+      * Cabecera de columnas del detalle
+       01  WS-CAB-DETALLE.
            05 FILLER  PIC X(15) VALUE 'TIPO'.
            05 FILLER  PIC X(12) VALUE 'FECHA'.
            05 FILLER  PIC X(10) VALUE 'HORA'.
@@ -133,79 +123,74 @@
            05 FILLER  PIC X(08) VALUE 'OFICINA'.
            05 FILLER  PIC X(13) VALUE '        VALOR'.
 
-       01  WS-DET.
-           05 WD-TIPO     PIC X(13).
+      * Linea de detalle (un movimiento del reporte)
+       01  WS-LIN-DETALLE.
+           05 DET-TIPO     PIC X(13).
            05 FILLER      PIC X(02) VALUE SPACES.
-           05 WD-FECHA    PIC X(10).
+           05 DET-FECHA    PIC X(10).
            05 FILLER      PIC X(02) VALUE SPACES.
-           05 WD-HORA     PIC X(08).
+           05 DET-HORA     PIC X(08).
            05 FILLER      PIC X(02) VALUE SPACES.
-           05 WD-CLIENTE  PIC X(06).
+           05 DET-CLIENTE  PIC X(06).
            05 FILLER      PIC X(03) VALUE SPACES.
-           05 WD-MOTIVO   PIC X(02).
+           05 DET-MOTIVO   PIC X(02).
            05 FILLER      PIC X(05) VALUE SPACES.
-           05 WD-OFICINA  PIC X(03).
+           05 DET-OFICINA  PIC X(03).
            05 FILLER      PIC X(01) VALUE SPACES.
-           05 WD-VALOR    PIC Z(12)9.99.
+           05 DET-VALOR    PIC Z(12)9.99.
 
-      * RESUMEN CONTABLE POR OFICINA (acotado: 1 fila por cuenta/ofi
-      * parametrizada, maximo 100 -> tabla chica, no escala con los
-      * movimientos)
+      * Nro de items usados del resumen (tambien acota el SORT de tabla)
+       01  WS-COUNT-RESUMEN     PIC 9(03) VALUE ZEROES.
+
+      * Tabla de resumen: un item por cada oficina + cuenta
        01  WS-RESUMEN.
-           05 WR-ITEM OCCURS 100 TIMES INDEXED BY IDX-R.
-              10 WR-OFICINA  PIC X(03).
-              10 WR-CUENTA   PIC X(12).
-              10 WR-NOMBRE   PIC X(30).
-              10 WR-PARTIDA  PIC S9(15)V99.
-              10 WR-CONTRA   PIC S9(15)V99.
-       01  WS-COUNT-RESUMEN  PIC 9(03) VALUE ZEROES.
-       01  WS-R-ENCONTRADO   PIC X(01) VALUE 'N'.
-       01  WS-I             PIC 9(03) VALUE ZEROES.
-       01  WS-J             PIC 9(03) VALUE ZEROES.
-       01  WS-J1            PIC 9(03) VALUE ZEROES.
-       01  WS-OFI-ANT        PIC X(03) VALUE SPACES.
-       01  WS-SUB-OFI-PAR    PIC S9(15)V99 VALUE ZEROES.
-       01  WS-SUB-OFI-CON    PIC S9(15)V99 VALUE ZEROES.
-       01  WS-TMP-ITEM.
-           05 WT-OFICINA  PIC X(03).
-           05 WT-CUENTA   PIC X(12).
-           05 WT-NOMBRE   PIC X(30).
-           05 WT-PARTIDA  PIC S9(15)V99.
-           05 WT-CONTRA   PIC S9(15)V99.
+           05 RES-ITEM OCCURS 1 TO 100 TIMES
+                       DEPENDING ON WS-COUNT-RESUMEN.
+              10 RES-OFICINA  PIC X(03).
+              10 RES-CUENTA   PIC X(12).
+              10 RES-NOMBRE   PIC X(30).
+              10 RES-PARTIDA  PIC S9(15)V99.
+              10 RES-CONTRA   PIC S9(15)V99.
+
+       01  WS-RES-ENCONTRADO    PIC X(01) VALUE 'N'.
+      * Indice para recorrer la tabla de resumen
+       01  IDX-RES             PIC 9(03) VALUE ZEROES.
+       01  WS-OFICINA-ANTERIOR  PIC X(03) VALUE SPACES.
+       01  WS-SUBTOT-OFI-PAR    PIC S9(15)V99 VALUE ZEROES.
+       01  WS-SUBTOT-OFI-CON    PIC S9(15)V99 VALUE ZEROES.
 
        PROCEDURE DIVISION.
 
-      *================================================================*
        100-MAIN SECTION.
+
        100-MAIN-A.
            MOVE ZEROES TO WS-SQLCODE.
            CALL 'DB-CONECTAR' USING WS-SQLCODE.
            IF WS-SQLCODE NOT = 0
                DISPLAY 'ERROR DE CONEXION. SQLCODE=' WS-SQLCODE
-               PERFORM 2000-MOSTRAR-CONTADORES
                PERFORM 100-EXIT
            END-IF.
 
-           MOVE FUNCTION CURRENT-DATE TO WS-CURR.
-           STRING WS-CURR(7:2) '/' WS-CURR(5:2) '/' WS-CURR(1:4)
+           MOVE FUNCTION CURRENT-DATE TO WS-FECHA-SISTEMA.
+           STRING WS-FECHA-SISTEMA(7:2) '/'
+                  WS-FECHA-SISTEMA(5:2) '/'
+                  WS-FECHA-SISTEMA(1:4)
                DELIMITED BY SIZE INTO WS-FECHA-PROC.
 
+      *    REPORTE2 cabecera de lista errores
            OPEN OUTPUT REPORTE REPERROR.
            MOVE 'REPORTE DE ERRORES / INCONSISTENCIAS'
                TO REG-ERROR.
            WRITE REG-ERROR.
-           MOVE WS-SEP TO REG-ERROR.
+           MOVE WS-SEPARADOR TO REG-ERROR.
            WRITE REG-ERROR.
-           MOVE WS-CAB-ERR TO REG-ERROR.
+           MOVE WS-CAB-ERROR TO REG-ERROR.
            WRITE REG-ERROR.
-           MOVE WS-SEP TO REG-ERROR.
+           MOVE WS-SEPARADOR TO REG-ERROR.
            WRITE REG-ERROR.
 
            PERFORM 500-CARGAR-PARAMETROS.
 
-      *    El clasificador interno de COBOL:
-      *      INPUT  PROCEDURE -> lee de la BD (1 x 1) y hace RELEASE
-      *      OUTPUT PROCEDURE -> RETURN de los registros ya ordenados
            SORT SORT-FILE
                ON ASCENDING KEY SRT-CUENTA
                ON ASCENDING KEY SRT-OFICINA
@@ -214,19 +199,13 @@
 
            CLOSE REPORTE REPERROR.
 
-           PERFORM 2000-MOSTRAR-CONTADORES.
            PERFORM 100-EXIT.
 
-      *================================================================*
        100-EXIT SECTION.
        100-EXIT-A.
            CALL 'DB-DESCONECTAR'.
            STOP RUN.
 
-      *================================================================*
-      * Pide al subprograma que llene la tabla de parametros.          *
-      * (Son pocas filas y acotadas -> tabla en memoria, no desborda). *
-      *================================================================*
        500-CARGAR-PARAMETROS SECTION.
        500-A.
            INITIALIZE TB-PARAMETROS.
@@ -237,51 +216,36 @@
                DISPLAY 'ERROR CARGANDO PARAMETROS. SQLCODE=' WS-SQLCODE
            END-IF.
 
-      *================================================================*
-      * INPUT PROCEDURE                                               *
-      * Trae UN movimiento por CALL, lo valida en memoria y genera    *
-      * SUS DOS afectaciones (PARTIDA + CONTRAPARTIDA) con RELEASE.    *
-      * Nunca hay mas de un registro de BD vivo a la vez.             *
-      *================================================================*
        1000-PROCESAR-MOVIMIENTOS SECTION.
        1000-LOOP.
            MOVE ZEROES TO WS-SQLCODE.
            PERFORM UNTIL WS-SQLCODE NOT = 0
                CALL 'DB-FETCH-MOV' USING MOV-REG WS-SQLCODE
                IF WS-SQLCODE = 0
-                   ADD 1 TO WS-CONT-LEIDOS
                    PERFORM 1200-VALIDAR-Y-ENVIAR
                END-IF
            END-PERFORM.
            GO TO 1000-FIN.
 
-      *----------------------------------------------------------------*
-      * Validaciones (punto 5 del enunciado) y generacion del asiento *
-      * por DOBLE PARTIDA (punto 4): cada movimiento contabilizado    *
-      * produce un registro de PARTIDA y otro de CONTRAPARTIDA por el *
-      * mismo valor.  Si falta cualquiera de los dos lados el         *
-      * movimiento es INCONSISTENTE y no afecta el cuadre.            *
-      *----------------------------------------------------------------*
+      * Validaciones del mov
        1200-VALIDAR-Y-ENVIAR.
-      *    5.3 Valor del movimiento
+      *    Valor
            IF MOV-VALOR <= 0
-               ADD 1 TO WS-CONT-RECHAZADOS
                MOVE 'VALOR INVALIDO' TO WS-TIPO-ERROR
                PERFORM 220-GRABAR-ERROR
                DISPLAY 'MOV RECHAZADO: VALOR <= 0'
                EXIT PARAGRAPH
            END-IF.
 
-      *    5.4 Oficina del movimiento
+      *    oficina
            IF MOV-OFICINA = SPACES OR MOV-OFICINA = ZEROES
-               ADD 1 TO WS-CONT-RECHAZADOS
                MOVE 'OFICINA INVALIDA' TO WS-TIPO-ERROR
                PERFORM 220-GRABAR-ERROR
                DISPLAY 'MOV RECHAZADO: OFICINA INVALIDA'
                EXIT PARAGRAPH
            END-IF.
 
-      *    Ubicar la PARTIDA y la CONTRAPARTIDA del motivo
+      *    Par y Contra
            MOVE ZEROES TO WS-IDX-PARTIDA WS-IDX-CONTRA.
            PERFORM VARYING IDX-PAR FROM 1 BY 1
                    UNTIL IDX-PAR > WS-COUNT-PARAM
@@ -296,18 +260,16 @@
                END-IF
            END-PERFORM.
 
-      *    5.1 Motivo sin ninguna parametrizacion
+      *    motivo si parametrizacion
            IF WS-IDX-PARTIDA = 0 AND WS-IDX-CONTRA = 0
-               ADD 1 TO WS-CONT-SIN-PARAM
                MOVE 'MOTIVO NO PARAMETRIZADO' TO WS-TIPO-ERROR
                PERFORM 220-GRABAR-ERROR
                DISPLAY 'MOV SIN PARAMETRIZACION. MOTIVO=' MOV-COD-MOTIVO
                EXIT PARAGRAPH
            END-IF.
 
-      *    5.2 Parametrizacion incompleta -> movimiento inconsistente
+      *    parametrizacion incompleta, par y contra par del mov
            IF WS-IDX-PARTIDA = 0
-               ADD 1 TO WS-CONT-RECHAZADOS
                MOVE 'PARTIDA NO ENCONTRADA' TO WS-TIPO-ERROR
                PERFORM 220-GRABAR-ERROR
                DISPLAY 'MOV INCONSISTENTE: FALTA PARTIDA. MOTIVO='
@@ -315,7 +277,6 @@
                EXIT PARAGRAPH
            END-IF.
            IF WS-IDX-CONTRA = 0
-               ADD 1 TO WS-CONT-RECHAZADOS
                MOVE 'CONTRAPARTIDA NO ENCONTRADA' TO WS-TIPO-ERROR
                PERFORM 220-GRABAR-ERROR
                DISPLAY 'MOV INCONSISTENTE: FALTA CONTRAPARTIDA. MOTIVO='
@@ -323,52 +284,41 @@
                EXIT PARAGRAPH
            END-IF.
 
-      *    5.4 La oficina de afectacion de ambos lados debe existir
+      *    oficina para par y contra debe existir
            IF PAR-OFICINA-AFECTACION(WS-IDX-PARTIDA) = SPACES
               OR PAR-OFICINA-AFECTACION(WS-IDX-PARTIDA) = ZEROES
               OR PAR-OFICINA-AFECTACION(WS-IDX-CONTRA)  = SPACES
               OR PAR-OFICINA-AFECTACION(WS-IDX-CONTRA)  = ZEROES
-               ADD 1 TO WS-CONT-RECHAZADOS
                MOVE 'OFICINA AFECT. INDEFINIDA' TO WS-TIPO-ERROR
                PERFORM 220-GRABAR-ERROR
                DISPLAY 'OFICINA DE AFECTACION NO DETERMINADA'
                EXIT PARAGRAPH
            END-IF.
 
-      *    Movimiento correcto: se emiten sus DOS afectaciones
-           MOVE WS-IDX-PARTIDA TO WS-SUB.
+      *    movimiento correcto, se genera 2 lineas contables
+           MOVE WS-IDX-PARTIDA TO IDX-PARAM.
            PERFORM 1250-EMITIR-ASIENTO.
            ADD MOV-VALOR TO WS-TOTAL-PARTIDAS.
 
-           MOVE WS-IDX-CONTRA TO WS-SUB.
+           MOVE WS-IDX-CONTRA TO IDX-PARAM.
            PERFORM 1250-EMITIR-ASIENTO.
            ADD MOV-VALOR TO WS-TOTAL-CONTRAPART.
 
-           ADD 1 TO WS-CONT-VALIDOS.
-
-      *----------------------------------------------------------------*
-      * Arma una afectacion contable (fila del SORT) desde la         *
-      * parametrizacion WS-SUB y hace RELEASE.                        *
-      *----------------------------------------------------------------*
+      *    arma la fila de SORT con IDX-PARAM y la libera (RELEASE)
        1250-EMITIR-ASIENTO.
-           MOVE PAR-CUENTA-CONTABLE(WS-SUB)    TO SRT-CUENTA.
-           MOVE PAR-OFICINA-AFECTACION(WS-SUB) TO SRT-OFICINA.
-           MOVE PAR-TIPO-ENTRADA(WS-SUB)       TO SRT-TIPO-ENTRADA.
+           MOVE PAR-CUENTA-CONTABLE(IDX-PARAM)    TO SRT-CUENTA.
+           MOVE PAR-OFICINA-AFECTACION(IDX-PARAM) TO SRT-OFICINA.
+           MOVE PAR-TIPO-ENTRADA(IDX-PARAM)       TO SRT-TIPO-ENTRADA.
            MOVE MOV-FECHA-MOV                  TO SRT-FECHA.
            MOVE MOV-HORA-MOV                   TO SRT-HORA.
            MOVE MOV-COD-CLIENTE                TO SRT-CLIENTE.
            MOVE MOV-COD-MOTIVO                 TO SRT-MOTIVO.
            MOVE MOV-VALOR                      TO SRT-VALOR.
-           MOVE PAR-NOMBRE-CUENTA(WS-SUB)      TO SRT-NOMBRE-CTA.
+           MOVE PAR-NOMBRE-CUENTA(IDX-PARAM)      TO SRT-NOMBRE-CTA.
            RELEASE REG-SORT.
-           ADD 1 TO WS-CONT-ASIENTOS.
 
-      *----------------------------------------------------------------*
-      * Punto 13: registra el movimiento no contabilizado en REPERROR *
-      * con su tipo de error.  No afecta los totales del cuadre.      *
-      *----------------------------------------------------------------*
        220-GRABAR-ERROR.
-      *    MOV-FECHA-MOV viene como AAAA-MM-DD -> se muestra DD/MM/AAAA
+      *    fecha mov
            STRING MOV-FECHA-MOV(9:2) '/' MOV-FECHA-MOV(6:2) '/'
                   MOV-FECHA-MOV(1:4)
                DELIMITED BY SIZE INTO WE-FECHA.
@@ -383,14 +333,7 @@
        1000-FIN.
            EXIT.
 
-      *================================================================*
-      * OUTPUT PROCEDURE  ---  REPORTE CONTABLE PAGINADO (puntos 7-12) *
-      *                                                              *
-      * Toma los asientos ya clasificados con RETURN, UNO A UNO, y    *
-      * los escribe directo en REPORTE (nunca los junta en memoria).  *
-      * En paralelo acumula el RESUMEN POR OFICINA en una tabla       *
-      * acotada (una fila por cuenta/oficina parametrizada, max 100). *
-      *================================================================*
+
        3000-GENERAR-REPORTE SECTION.
        3000-A.
            MOVE ZEROES TO WS-PAGINA.
@@ -435,7 +378,7 @@
            PERFORM 3700-TOTAL-GENERAL.
            GO TO 3000-FIN.
 
-      *---- encabezado compacto, se reimprime cada pagina (7.1 / 8) --*
+      * REPORTE1, encabezado*
        3100-ENCABEZADO.
            ADD 1 TO WS-PAGINA.
            MOVE WS-PAGINA TO WS-PAGINA-ED.
@@ -447,7 +390,7 @@
                   '   PAG: ' WS-PAGINA-ED
                DELIMITED BY SIZE INTO REG-REPORTE.
            WRITE REG-REPORTE.
-           MOVE WS-SEP TO REG-REPORTE.
+           MOVE WS-SEPARADOR TO REG-REPORTE.
            WRITE REG-REPORTE.
            MOVE 3 TO WS-LINEAS.
 
@@ -456,7 +399,7 @@
                PERFORM 3100-ENCABEZADO
            END-IF.
 
-      *---- cabecera de una cuenta contable (punto 9) ----------------*
+      * ARMAR REPORTE POR CUENTA CONTABLE
        3200-ABRIR-CUENTA.
            PERFORM 3150-VERIF-PAGINA.
            MOVE ZEROES TO WS-SUBTOT-CUENTA.
@@ -464,33 +407,33 @@
            STRING 'CUENTA: ' SRT-CUENTA '  ' SRT-NOMBRE-CTA
                DELIMITED BY SIZE INTO REG-REPORTE.
            WRITE REG-REPORTE.
-           MOVE WS-CAB-DET TO REG-REPORTE.
+           MOVE WS-CAB-DETALLE TO REG-REPORTE.
            WRITE REG-REPORTE.
-           MOVE WS-SEP TO REG-REPORTE.
+           MOVE WS-SEPARADOR TO REG-REPORTE.
            WRITE REG-REPORTE.
            ADD 3 TO WS-LINEAS.
 
-      *---- una linea de detalle (punto 9) --------------------------*
+      * DETALLE DE CADA MOV ASOCIADO A LA CUENTA
        3300-ESCRIBIR-DETALLE.
            PERFORM 3150-VERIF-PAGINA.
-           MOVE SPACES TO WS-DET.
-           MOVE SRT-TIPO-ENTRADA TO WD-TIPO.
+           MOVE SPACES TO WS-LIN-DETALLE.
+           MOVE SRT-TIPO-ENTRADA TO DET-TIPO.
            STRING SRT-FECHA(9:2) '/' SRT-FECHA(6:2) '/' SRT-FECHA(1:4)
-               DELIMITED BY SIZE INTO WD-FECHA.
-           MOVE SRT-HORA    TO WD-HORA.
-           MOVE SRT-CLIENTE TO WD-CLIENTE.
-           MOVE SRT-MOTIVO  TO WD-MOTIVO.
-           MOVE SRT-OFICINA TO WD-OFICINA.
-           MOVE SRT-VALOR   TO WD-VALOR.
-           MOVE WS-DET TO REG-REPORTE.
+               DELIMITED BY SIZE INTO DET-FECHA.
+           MOVE SRT-HORA    TO DET-HORA.
+           MOVE SRT-CLIENTE TO DET-CLIENTE.
+           MOVE SRT-MOTIVO  TO DET-MOTIVO.
+           MOVE SRT-OFICINA TO DET-OFICINA.
+           MOVE SRT-VALOR   TO DET-VALOR.
+           MOVE WS-LIN-DETALLE TO REG-REPORTE.
            WRITE REG-REPORTE.
            ADD 1 TO WS-LINEAS.
            ADD SRT-VALOR TO WS-SUBTOT-CUENTA.
 
-      *---- subtotal de la cuenta al quiebre de control (punto 9) ---*
+      * QUIEBRE DE CUENTA Y TOTAL DE CUENTA
        3400-CERRAR-CUENTA.
            PERFORM 3150-VERIF-PAGINA.
-           MOVE WS-SEP TO REG-REPORTE.
+           MOVE WS-SEPARADOR TO REG-REPORTE.
            WRITE REG-REPORTE.
            MOVE WS-SUBTOT-CUENTA TO WS-IMP-CTA.
            MOVE SPACES TO REG-REPORTE.
@@ -500,109 +443,102 @@
            MOVE SPACES TO REG-REPORTE.
            WRITE REG-REPORTE.
            ADD 3 TO WS-LINEAS.
-
-      *---- acumula el resumen por (OFICINA, CUENTA) ----------------*
+      
+      * ACUMULA PARTIDA Y CONTRAPARTIDA EN EL RESUMEN POR OFICINA/CUENTA
        3500-ACUMULAR-RESUMEN.
-           MOVE 'N' TO WS-R-ENCONTRADO.
-           PERFORM VARYING WS-I FROM 1 BY 1
-                   UNTIL WS-I > WS-COUNT-RESUMEN
-               IF WR-OFICINA(WS-I) = SRT-OFICINA
-                  AND WR-CUENTA(WS-I) = SRT-CUENTA
-                   MOVE 'S' TO WS-R-ENCONTRADO
+           MOVE 'N' TO WS-RES-ENCONTRADO.
+
+           *> ACUMULA EXISTENTE
+           PERFORM VARYING IDX-RES FROM 1 BY 1
+                   UNTIL IDX-RES > WS-COUNT-RESUMEN
+               IF RES-OFICINA(IDX-RES) = SRT-OFICINA
+                  AND RES-CUENTA(IDX-RES) = SRT-CUENTA
+                   MOVE 'S' TO WS-RES-ENCONTRADO
                    PERFORM 3550-SUMAR-RESUMEN
                END-IF
            END-PERFORM.
-           IF WS-R-ENCONTRADO = 'N' AND WS-COUNT-RESUMEN < 100
+
+           *> REGISTRA Y ACUMULA
+           IF WS-RES-ENCONTRADO = 'N' AND WS-COUNT-RESUMEN < 100 
                ADD 1 TO WS-COUNT-RESUMEN
-               MOVE WS-COUNT-RESUMEN TO WS-I
-               MOVE SRT-OFICINA    TO WR-OFICINA(WS-I)
-               MOVE SRT-CUENTA     TO WR-CUENTA(WS-I)
-               MOVE SRT-NOMBRE-CTA TO WR-NOMBRE(WS-I)
-               MOVE ZEROES TO WR-PARTIDA(WS-I)
-               MOVE ZEROES TO WR-CONTRA(WS-I)
+               MOVE WS-COUNT-RESUMEN TO IDX-RES
+               MOVE SRT-OFICINA    TO RES-OFICINA(IDX-RES)
+               MOVE SRT-CUENTA     TO RES-CUENTA(IDX-RES)
+               MOVE SRT-NOMBRE-CTA TO RES-NOMBRE(IDX-RES)
+               MOVE ZEROES TO RES-PARTIDA(IDX-RES)
+               MOVE ZEROES TO RES-CONTRA(IDX-RES)
                PERFORM 3550-SUMAR-RESUMEN
            END-IF.
 
+      * SUMA EL VALOR EN PARTIDA O CONTRAPARTIDA POR OFICINA Y CUENTA
        3550-SUMAR-RESUMEN.
            IF SRT-TIPO-ENTRADA = 'PARTIDA'
-               ADD SRT-VALOR TO WR-PARTIDA(WS-I)
+               ADD SRT-VALOR TO RES-PARTIDA(IDX-RES)
            ELSE
-               ADD SRT-VALOR TO WR-CONTRA(WS-I)
+               ADD SRT-VALOR TO RES-CONTRA(IDX-RES)
            END-IF.
 
-      *---- RESUMEN CONTABLE POR OFICINA (punto 11) -----------------*
+      * Ordena el resumen por OFICINA y luego por CUENTA
        3600-RESUMEN-OFICINA.
-      *    Ordenamiento simple (burbuja) por OFICINA y luego CUENTA
-           PERFORM VARYING WS-I FROM 1 BY 1
-                   UNTIL WS-I >= WS-COUNT-RESUMEN
-               PERFORM VARYING WS-J FROM 1 BY 1
-                       UNTIL WS-J >= WS-COUNT-RESUMEN
-                   COMPUTE WS-J1 = WS-J + 1
-                   IF WR-OFICINA(WS-J) > WR-OFICINA(WS-J1)
-                     OR (WR-OFICINA(WS-J) = WR-OFICINA(WS-J1)
-                         AND WR-CUENTA(WS-J) > WR-CUENTA(WS-J1))
-                       MOVE WR-ITEM(WS-J)  TO WS-TMP-ITEM
-                       MOVE WR-ITEM(WS-J1) TO WR-ITEM(WS-J)
-                       MOVE WS-TMP-ITEM    TO WR-ITEM(WS-J1)
-                   END-IF
-               END-PERFORM
-           END-PERFORM.
+           IF WS-COUNT-RESUMEN > 1
+               SORT RES-ITEM ASCENDING KEY RES-OFICINA RES-CUENTA
+           END-IF.
 
            PERFORM 3150-VERIF-PAGINA.
            MOVE SPACES TO REG-REPORTE.
            WRITE REG-REPORTE.
            MOVE 'RESUMEN CONTABLE POR OFICINA' TO REG-REPORTE.
            WRITE REG-REPORTE.
-           MOVE WS-SEP TO REG-REPORTE.
+           MOVE WS-SEPARADOR TO REG-REPORTE.
            WRITE REG-REPORTE.
            ADD 3 TO WS-LINEAS.
 
-           MOVE SPACES TO WS-OFI-ANT.
-           MOVE ZEROES TO WS-SUB-OFI-PAR.
-           MOVE ZEROES TO WS-SUB-OFI-CON.
+           MOVE SPACES TO WS-OFICINA-ANTERIOR.
+           MOVE ZEROES TO WS-SUBTOT-OFI-PAR.
+           MOVE ZEROES TO WS-SUBTOT-OFI-CON.
 
-           PERFORM VARYING WS-I FROM 1 BY 1
-                   UNTIL WS-I > WS-COUNT-RESUMEN
-               IF WR-OFICINA(WS-I) NOT = WS-OFI-ANT
-                   IF WS-OFI-ANT NOT = SPACES
+           PERFORM VARYING IDX-RES FROM 1 BY 1
+                   UNTIL IDX-RES > WS-COUNT-RESUMEN
+               IF RES-OFICINA(IDX-RES) NOT = WS-OFICINA-ANTERIOR
+                   IF WS-OFICINA-ANTERIOR NOT = SPACES
                        PERFORM 3650-TOTAL-OFICINA
                    END-IF
-                   MOVE WR-OFICINA(WS-I) TO WS-OFI-ANT
-                   MOVE ZEROES TO WS-SUB-OFI-PAR
-                   MOVE ZEROES TO WS-SUB-OFI-CON
+                   MOVE RES-OFICINA(IDX-RES) TO WS-OFICINA-ANTERIOR
+                   MOVE ZEROES TO WS-SUBTOT-OFI-PAR
+                   MOVE ZEROES TO WS-SUBTOT-OFI-CON
                    PERFORM 3150-VERIF-PAGINA
                    MOVE SPACES TO REG-REPORTE
-                   STRING 'OFICINA: ' WR-OFICINA(WS-I)
+                   STRING 'OFICINA: ' RES-OFICINA(IDX-RES)
                        DELIMITED BY SIZE INTO REG-REPORTE
                    WRITE REG-REPORTE
                    ADD 1 TO WS-LINEAS
                END-IF
                PERFORM 3150-VERIF-PAGINA
-               MOVE WR-PARTIDA(WS-I) TO WS-IMP-PAR
-               MOVE WR-CONTRA(WS-I)  TO WS-IMP-CON
+               MOVE RES-PARTIDA(IDX-RES) TO WS-IMP-PAR
+               MOVE RES-CONTRA(IDX-RES)  TO WS-IMP-CON
                COMPUTE WS-DIFERENCIA =
-                   WR-PARTIDA(WS-I) - WR-CONTRA(WS-I)
-               MOVE WS-DIFERENCIA TO WS-EDT-DIFEREN
+                   RES-PARTIDA(IDX-RES) - RES-CONTRA(IDX-RES)
+               MOVE WS-DIFERENCIA TO WS-DIFEREN-EDIT
                MOVE SPACES TO REG-REPORTE
-               STRING '  ' WR-CUENTA(WS-I) ' ' WR-NOMBRE(WS-I)
+               STRING '  ' RES-CUENTA(IDX-RES) ' ' RES-NOMBRE(IDX-RES)
                       ' P:' WS-IMP-PAR ' C:' WS-IMP-CON
-                      ' D:' WS-EDT-DIFEREN
+                      ' D:' WS-DIFEREN-EDIT
                    DELIMITED BY SIZE INTO REG-REPORTE
                WRITE REG-REPORTE
                ADD 1 TO WS-LINEAS
-               ADD WR-PARTIDA(WS-I) TO WS-SUB-OFI-PAR
-               ADD WR-CONTRA(WS-I)  TO WS-SUB-OFI-CON
+               ADD RES-PARTIDA(IDX-RES) TO WS-SUBTOT-OFI-PAR
+               ADD RES-CONTRA(IDX-RES)  TO WS-SUBTOT-OFI-CON
            END-PERFORM.
-           IF WS-OFI-ANT NOT = SPACES
+           IF WS-OFICINA-ANTERIOR NOT = SPACES
                PERFORM 3650-TOTAL-OFICINA
            END-IF.
 
        3650-TOTAL-OFICINA.
            PERFORM 3150-VERIF-PAGINA.
-           MOVE WS-SUB-OFI-PAR TO WS-IMP-PAR.
-           MOVE WS-SUB-OFI-CON TO WS-IMP-CON.
+           MOVE WS-SUBTOT-OFI-PAR TO WS-IMP-PAR.
+           MOVE WS-SUBTOT-OFI-CON TO WS-IMP-CON.
            MOVE SPACES TO REG-REPORTE.
-           STRING 'TOTAL OFICINA ' WS-OFI-ANT
+           STRING 'TOTAL OFICINA ' WS-OFICINA-ANTERIOR
                   '   PARTIDAS:' WS-IMP-PAR
                   '   CONTRAPARTIDAS:' WS-IMP-CON
                DELIMITED BY SIZE INTO REG-REPORTE.
@@ -611,7 +547,7 @@
            WRITE REG-REPORTE.
            ADD 2 TO WS-LINEAS.
 
-      *---- TOTAL GENERAL (punto 12) -------------------------------*
+      * TOTAL GENERAL Y ESTADO DE CUADRE
        3700-TOTAL-GENERAL.
            PERFORM 3150-VERIF-PAGINA.
            COMPUTE WS-DIFERENCIA =
@@ -621,11 +557,11 @@
            ELSE
                MOVE 'DESCUADRADO' TO WS-ESTADO-CUADRE
            END-IF.
-           MOVE WS-SEP TO REG-REPORTE.
+           MOVE WS-SEPARADOR TO REG-REPORTE.
            WRITE REG-REPORTE.
            MOVE '                 TOTAL GENERAL' TO REG-REPORTE.
            WRITE REG-REPORTE.
-           MOVE WS-SEP TO REG-REPORTE.
+           MOVE WS-SEPARADOR TO REG-REPORTE.
            WRITE REG-REPORTE.
            MOVE WS-TOTAL-PARTIDAS TO WS-IMP-PAR.
            MOVE SPACES TO REG-REPORTE.
@@ -637,16 +573,16 @@
            STRING 'TOTAL CONTRAPARTIDAS : ' WS-IMP-CON
                DELIMITED BY SIZE INTO REG-REPORTE.
            WRITE REG-REPORTE.
-           MOVE WS-DIFERENCIA TO WS-EDT-DIFEREN.
+           MOVE WS-DIFERENCIA TO WS-DIFEREN-EDIT.
            MOVE SPACES TO REG-REPORTE.
-           STRING 'DIFERENCIA           : ' WS-EDT-DIFEREN
+           STRING 'DIFERENCIA           : ' WS-DIFEREN-EDIT
                DELIMITED BY SIZE INTO REG-REPORTE.
            WRITE REG-REPORTE.
            MOVE SPACES TO REG-REPORTE.
            STRING 'ESTADO DEL CUADRE    : ' WS-ESTADO-CUADRE
                DELIMITED BY SIZE INTO REG-REPORTE.
            WRITE REG-REPORTE.
-           MOVE WS-SEP TO REG-REPORTE.
+           MOVE WS-SEPARADOR TO REG-REPORTE.
            WRITE REG-REPORTE.
 
        3950-FMT-FECHA-MOV.
@@ -655,34 +591,3 @@
 
        3000-FIN.
            EXIT.
-
-      *================================================================*
-      * 2000-MOSTRAR-CONTADORES  ---  cuadre contable (puntos 6 y 12)  *
-      *================================================================*
-       2000-MOSTRAR-CONTADORES SECTION.
-       2000-A.
-           COMPUTE WS-DIFERENCIA =
-               WS-TOTAL-PARTIDAS - WS-TOTAL-CONTRAPART.
-           IF WS-DIFERENCIA = 0
-               MOVE 'CUADRADO'    TO WS-ESTADO-CUADRE
-           ELSE
-               MOVE 'DESCUADRADO' TO WS-ESTADO-CUADRE
-           END-IF.
-
-           DISPLAY '========================================'.
-           DISPLAY '            CUADRE CONTABLE'.
-           DISPLAY '========================================'.
-           DISPLAY 'PARAMETROS CARGADOS    : ' WS-COUNT-PARAM.
-           DISPLAY 'MOVIMIENTOS LEIDOS     : ' WS-CONT-LEIDOS.
-           DISPLAY 'MOVIMIENTOS CONTABILIZ.: ' WS-CONT-VALIDOS.
-           DISPLAY 'MOVIMIENTOS RECHAZADOS : ' WS-CONT-RECHAZADOS.
-           DISPLAY 'MOVIMIENTOS SIN PARAM  : ' WS-CONT-SIN-PARAM.
-           DISPLAY 'AFECTACIONES GENERADAS : ' WS-CONT-ASIENTOS.
-           MOVE WS-TOTAL-PARTIDAS   TO WS-EDT-IMPORTE.
-           DISPLAY 'TOTAL PARTIDAS         : ' WS-EDT-IMPORTE.
-           MOVE WS-TOTAL-CONTRAPART TO WS-EDT-IMPORTE.
-           DISPLAY 'TOTAL CONTRAPARTIDAS   : ' WS-EDT-IMPORTE.
-           MOVE WS-DIFERENCIA       TO WS-EDT-DIFEREN.
-           DISPLAY 'DIFERENCIA             : ' WS-EDT-DIFEREN.
-           DISPLAY 'ESTADO DEL CUADRE      : ' WS-ESTADO-CUADRE.
-           DISPLAY '========================================'.
