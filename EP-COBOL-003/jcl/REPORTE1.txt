@@ -1,5 +1,5 @@
 CUADRE CONTABLE - MOVIMIENTOS
-PROCESO: TSQL001A   FECHA PROC: 06/09/2026   FECHA MOV: 03/09/2026        PAG:   1
+PROCESO: TSQL001A   FECHA PROC: 07/09/2026   FECHA MOV: 03/09/2026        PAG:   1
 ----------------------------------------------------------------------
 CUENTA: 110100100001  CAJA
 TIPO           FECHA       HORA      CLIENTE  MOTIVO OFICINA         VALOR
@@ -8,9 +8,8 @@ PARTIDA        03/09/2026  08:15:10  100001   01     001           150.00
 PARTIDA        03/09/2026  08:20:35  100025   01     001           250.00
 PARTIDA        03/09/2026  13:10:10  100601   01     001           180.00
 PARTIDA        03/09/2026  15:35:45  100945   01     001           190.50
-PARTIDA        03/09/2026  18:05:00  101188   01     001           400.00
 ----------------------------------------------------------------------
-TOTAL CUENTA:          1170.50
+TOTAL CUENTA:           770.50
 
 CUENTA: 110100100002  CAJA
 TIPO           FECHA       HORA      CLIENTE  MOTIVO OFICINA         VALOR
@@ -61,7 +60,7 @@ PARTIDA        03/09/2026  14:55:10  100825   06     001           270.00
 TOTAL CUENTA:           770.00
 
 CUADRE CONTABLE - MOVIMIENTOS
-PROCESO: TSQL001A   FECHA PROC: 06/09/2026   FECHA MOV: 03/09/2026        PAG:   2
+PROCESO: TSQL001A   FECHA PROC: 07/09/2026   FECHA MOV: 03/09/2026        PAG:   2
 ----------------------------------------------------------------------
 CUENTA: 110400100001  CARTERA
 TIPO           FECHA       HORA      CLIENTE  MOTIVO OFICINA         VALOR
@@ -79,9 +78,8 @@ CONTRAPARTIDA  03/09/2026  08:15:10  100001   01     001           150.00
 CONTRAPARTIDA  03/09/2026  08:20:35  100025   01     001           250.00
 CONTRAPARTIDA  03/09/2026  13:10:10  100601   01     001           180.00
 CONTRAPARTIDA  03/09/2026  15:35:45  100945   01     001           190.50
-CONTRAPARTIDA  03/09/2026  18:05:00  101188   01     001           400.00
 ----------------------------------------------------------------------
-TOTAL CUENTA:          1170.50
+TOTAL CUENTA:           770.50
 
 CUENTA: 210200200003  DEPOSITOS PLAZO
 TIPO           FECHA       HORA      CLIENTE  MOTIVO OFICINA         VALOR
@@ -122,7 +120,7 @@ CONTRAPARTIDA  03/09/2026  15:55:00  100988   02     002           360.00
 TOTAL CUENTA:          1020.50
 
 CUADRE CONTABLE - MOVIMIENTOS
-PROCESO: TSQL001A   FECHA PROC: 06/09/2026   FECHA MOV: 03/09/2026        PAG:   3
+PROCESO: TSQL001A   FECHA PROC: 07/09/2026   FECHA MOV: 03/09/2026        PAG:   3
 ----------------------------------------------------------------------
 CUENTA: 410400400001  COMISIONES COBRADAS
 TIPO           FECHA       HORA      CLIENTE  MOTIVO OFICINA         VALOR
@@ -147,15 +145,15 @@ TOTAL CUENTA:           770.00
 RESUMEN CONTABLE POR OFICINA
 ----------------------------------------------------------------------
 OFICINA: 001
-  110100100001 CAJA                           P:         1170.50 C:            0.00 D:           1170.50
+  110100100001 CAJA                           P:          770.50 C:            0.00 D:            770.50
   110200100001 BANCOS NACIONALES              P:         1870.75 C:            0.00 D:           1870.75
   110300100001 INVERSIONES                    P:          770.00 C:            0.00 D:            770.00
   110400100001 CARTERA                        P:         1980.50 C:            0.00 D:           1980.50
-  210200200001 DEPOSITOS CLIENTES             P:            0.00 C:         1170.50 D:          -1170.50
+  210200200001 DEPOSITOS CLIENTES             P:            0.00 C:          770.50 D:           -770.50
   210600600001 PROVISIONES                    P:            0.00 C:         1980.50 D:          -1980.50
   410400400001 COMISIONES COBRADAS            P:            0.00 C:         1870.75 D:          -1870.75
   410500500001 RENDIMIENTOS                   P:            0.00 C:          770.00 D:           -770.00
-TOTAL OFICINA 001   PARTIDAS:         5791.75   CONTRAPARTIDAS:         5791.75
+TOTAL OFICINA 001   PARTIDAS:         5391.75   CONTRAPARTIDAS:         5391.75
 
 OFICINA: 002
   110100100002 CAJA                           P:         1020.50 C:            0.00 D:           1020.50
@@ -172,8 +170,12 @@ TOTAL OFICINA 003   PARTIDAS:         1690.00   CONTRAPARTIDAS:         1690.00
 ----------------------------------------------------------------------
                  TOTAL GENERAL
 ----------------------------------------------------------------------
-TOTAL PARTIDAS       :         10092.50
-TOTAL CONTRAPARTIDAS :         10092.50
+TOTAL PARTIDAS       :          9692.50
+TOTAL CONTRAPARTIDAS :          9692.50
 DIFERENCIA           :               0.00
 ESTADO DEL CUADRE    : CUADRADO
+----------------------------------------------------------------------
+MOVIMIENTOS LEIDOS        :    30
+MOVIMIENTOS CONTABILIZADOS:    25
+MOVIMIENTOS RECHAZADOS    :     5
 ----------------------------------------------------------------------
